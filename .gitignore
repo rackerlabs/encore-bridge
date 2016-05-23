@@ -1,2 +1,4 @@
 node_modules
 demo/bower_components
+demo/demo.js
+demo/encore-bridge*
