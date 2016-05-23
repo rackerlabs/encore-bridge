@@ -1,0 +1,71 @@
+<div>
+  <p>The cog in the first row is dismissable by clicking anywhere, but the second cog can only be dismissed
+  by clicking on the cog itself.
+  </p>
+
+  <h3 id="typical-usage">Typical Usage</h3>
+  <table class="table-striped">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th class="actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Globally dismissible</td>
+        <td>
+          <rx-action-menu id="globalDismissal">
+            <ul class="rs-dropdown-menu">
+              <li>
+                <span class="rs-dropdown-category">Manage:</span>
+              </li>
+              <li>
+                <a href="#">Add</a>
+              </li>
+              <li>
+                <a href="#">Delete</a>
+              </li>
+            </ul>
+          </rx-action-menu>
+        </td>
+      </tr>
+      <tr>
+        <td>Only dismissible by clicking on cog</td>
+        <td>
+          <rx-action-menu global-dismiss="false">
+            <ul class="rs-dropdown-menu">
+              <li>
+                <span class="rs-dropdown-category">Manage:</span>
+              </li>
+              <li>
+                <a href="#">Add</a>
+              </li>
+              <li>
+                <a href="#">Delete</a>
+              </li>
+            </ul>
+          </rx-action-menu>
+        </td>
+      </tr>
+      <tr>
+        <td>Unorthodox Behaviors (no modals, hidden item)</td>
+        <td>
+          <rx-action-menu id="custom">
+            <ul class="rs-dropdown-menu">
+              <li>
+                <span class="rs-dropdown-category">Manage:</span>
+              </li>
+              <li>
+                <a href="#">Add</a>
+              </li>
+              <li>
+                <a href="#">Delete</a>
+              </li>
+            </ul>
+          </rx-action-menu>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

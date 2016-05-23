@@ -1,0 +1,80 @@
+<!doctype html>
+<html ng-app="demoApp">
+  <head>
+    <title>Encore Bridge</title>
+    <link rel="icon" type="image/png" href="images/favicon.png" rx-favicon="{ local: 'images/local-favicon.png' }" />
+
+    <!-- Content inside bower:css is auto-generated via `grunt wiredep` -->
+    <!-- bower:css -->
+    <link href="bower_components/canon/dist/canon.min.css" rel="stylesheet" />
+    <!-- endbower -->
+
+    <link href="encore-bridge.css" rel="stylesheet" />
+
+    <!-- Content inside bower:js is auto-generated via `grunt wiredep` -->
+    <!-- bower:js -->
+    <script src="bower_components/angular/angular.js"></script>
+    <script src="bower_components/angular-animate/angular-animate.js"></script>
+    <script src="bower_components/angular-sanitize/angular-sanitize.js"></script>
+    <script src="bower_components/angular-resource/angular-resource.js"></script>
+    <script src="bower_components/angular-route/angular-route.js"></script>
+    <script src="bower_components/angular-bootstrap/ui-bootstrap-tpls.js"></script>
+    <script src="bower_components/lodash/dist/lodash.compat.js"></script>
+    <script src="bower_components/moment/moment.js"></script>
+    <script src="bower_components/html2canvas/build/html2canvas.js"></script>
+    <script src="bower_components/angular-hotkeys/build/hotkeys.min.js"></script>
+    <script src="bower_components/ng-debounce/angular-debounce.js"></script>
+    <!-- endbower -->
+
+    <script src="encore-bridge.js"></script>
+    <script src="app.js"></script>
+    <script src="demo.js"></script>
+  </head>
+  <body class="rs-responsive">
+  <div class="rs-wrapper">
+    <div class="rs-nav-utility">
+      <div class="rs-container">
+        <ul class="rs-nav rs-pull-right">
+          <li class="rs-nav-item"><a class="rs-nav-link" href="#">Account: Username123</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="rs-nav-primary">
+      <div class="rs-container">
+        <div class="rs-nav-brand">
+          <a href="#/"></a>
+        </div>
+        <ul class="rs-nav">
+          <li class="active">
+            <rx-action-menu text="Components" type="primary">
+              <ul class="rs-dropdown-menu">
+                <li ng-repeat="component in components">
+                  <a class="rs-dropdown-link" ng-href="#/components/{{component}}">{{component}}</a>
+                </li>
+              </ul>
+            </rx-action-menu>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="rs-body">
+      <div class="rs-container">
+        <div class="rs-main">
+          <div class="rs-content rs-panel">
+            <div class="rs-inner" ng-view></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="rs-push"></div>
+  </div>
+  <div class="rs-nav-footer">
+    <div class="rs-container">
+      <ul class="rs-nav">
+        <li class="rs-nav-item">&copy; Rackspace, US</li>
+        <li class="rs-nav-item"><a class="rs-nav-link" href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a>
+        <li class="rs-nav-item"><a class="rs-nav-link" href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a>
+      </ul>
+    </div>
+  </div>
+</html>

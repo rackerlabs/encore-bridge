@@ -1,0 +1,16 @@
+{
+  "submodule": "encore-ui/src",
+  "modules": {
+    "components": [
+      "rxActionMenu",
+      "rxMetadata",
+      "rxSortableColumn",
+      "rxStatusColumn"
+    ],
+    "utilities": [
+      "rxSortUtil",
+      "rxStatusColumnIcons",
+      "rxStatusMappings"
+    ]
+  }
+}

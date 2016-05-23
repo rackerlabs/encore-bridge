@@ -1,0 +1,3 @@
+[submodule "encore-ui"]
+	path = encore-ui
+	url = git@github.com:rackerlabs/encore-ui.git

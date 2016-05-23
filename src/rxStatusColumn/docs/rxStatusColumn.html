@@ -1,0 +1,17 @@
+<div>
+  <table class="table-striped demo-status-column-table">
+    <thead>
+      <tr>
+        <th rx-status-header></th>
+        <th class="column-title">Title</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="server in servers | orderBy: sort.predicate:sort.reverse ">
+        <!-- Both `api` and `tooltip-content` are optional -->
+        <td rx-status-column status="{{ server.status }}"></td>
+        <td>{{ server.title }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
