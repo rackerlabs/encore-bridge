@@ -1,0 +1,20 @@
+
+{
+  "author": {
+    "name": "https://github.com/rackerlabs/canon/graphs/contributors"
+  },
+  "name": "canon",
+  "version": "1.8.0",
+  "ignore": [
+    "Makefile",
+    ".gitignore"
+  ],
+  "main": [
+    "dist/canon.min.js",
+    "dist/canon.min.css"
+  ],
+  "dependencies": {
+    "jquery": "~1.10.2",
+    "normalize-scss": "~2.1.2"
+  }
+}

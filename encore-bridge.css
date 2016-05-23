@@ -1,0 +1,65 @@
+.visually-hidden {
+  position: absolute !important;
+  clip: rect(1px, 1px, 1px, 1px);
+  padding: 0 !important;
+  border: 0 !important;
+  height: 1px !important;
+  width: 1px !important;
+  overflow: hidden;
+}
+
+rx-metadata {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+rx-metadata rx-meta {
+  display: block;
+  margin: 0 0 10px;
+  zoom: 1;
+}
+rx-metadata rx-meta .label {
+  clear: left;
+  float: left;
+  color: #999;
+  text-align: right;
+  width: 120px;
+}
+rx-metadata rx-meta .definition {
+  margin-left: 140px;
+}
+rx-metadata rx-meta.force-word-break {
+  word-break: break-all;
+}
+
+[rx-status-column] {
+  padding: 0;
+  width: 10px;
+}
+[rx-status-column].status-ACTIVE {
+  background-color: #00a96d !important;
+}
+[rx-status-column].status-WARNING {
+  background-color: #ff9d00 !important;
+}
+[rx-status-column].status-ERROR {
+  background-color: #c40022 !important;
+}
+[rx-status-column].status-INFO {
+  background-color: #00a96d !important;
+}
+[rx-status-column].status-PENDING {
+  background-color: #ff9d00 !important;
+  background-image: url(table-status-warning.gif);
+}
+[rx-status-column].status-DISABLED {
+  background-color: #ccc;
+}
+.rx-status-header {
+  padding: 0;
+  width: 10px;
+}
+
+.rs-dropdown > .visible > .rs-dropdown-menu {
+  display: block;
+}

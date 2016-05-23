@@ -1,0 +1,30 @@
+{
+  "author": {
+    "name": "https://github.com/rackerlabs/canon/graphs/contributors"
+  },
+  "name": "canon",
+  "version": "1.8.1",
+  "ignore": [
+    "Makefile",
+    ".gitignore"
+  ],
+  "main": [
+    "dist/canon.min.js",
+    "dist/canon.min.css"
+  ],
+  "dependencies": {
+    "jquery": "~1.10.2",
+    "normalize-scss": "~2.1.2"
+  },
+  "homepage": "https://github.com/rackerlabs/canon-bower",
+  "_release": "1.8.1",
+  "_resolution": {
+    "type": "version",
+    "tag": "1.8.1",
+    "commit": "35cd7e4b1389ed257a1f4e01737b0b56067a1155"
+  },
+  "_source": "https://github.com/rackerlabs/canon-bower.git",
+  "_target": "~1.8.1",
+  "_originalSource": "canon",
+  "_direct": true
+}
