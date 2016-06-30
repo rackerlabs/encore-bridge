@@ -8,6 +8,10 @@
   overflow: hidden;
 }
 
+.rs-dropdown > .visible > .rs-dropdown-menu {
+  display: block;
+}
+
 rx-metadata {
   margin: 0;
   padding: 0;
@@ -30,6 +34,17 @@ rx-metadata rx-meta .definition {
 }
 rx-metadata rx-meta.force-word-break {
   word-break: break-all;
+}
+
+rx-collapse {
+  display: block;
+}
+rx-metadata rx-collapse .rs-detail-section-body {
+  margin: 0;
+  padding: 0;
+}
+rx-metadata rx-collapse .rs-facet-section-toggle {
+  margin-left: 60px;
 }
 
 [rx-status-column] {
@@ -58,8 +73,4 @@ rx-metadata rx-meta.force-word-break {
 .rx-status-header {
   padding: 0;
   width: 10px;
-}
-
-.rs-dropdown > .visible > .rs-dropdown-menu {
-  display: block;
 }

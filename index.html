@@ -45,7 +45,7 @@
           <a href="#/"></a>
         </div>
         <ul class="rs-nav">
-          <li class="active">
+          <li ng-class="{'active': activePrimaryNavItem === 'components'}">
             <rx-action-menu text="Components" type="primary">
               <ul class="rs-dropdown-menu">
                 <li ng-repeat="component in components">
@@ -54,6 +54,14 @@
               </ul>
             </rx-action-menu>
           </li>
+          <li ng-class="{'active': activePrimaryNavItem === 'elements'}">
+            <rx-action-menu text="Elements" type="primary">
+              <ul class="rs-dropdown-menu">
+                <li ng-repeat="element in elements">
+                  <a class="rs-dropdown-link" ng-href="#/elements/{{element}}">{{element}}</a>
+                </li>
+              </ul>
+            </rx-action-menu>
         </ul>
       </div>
     </div>

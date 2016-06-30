@@ -1,4 +1,4 @@
-angular.module('encore.bridge', ['encore.ui.layout','encore.ui.rxActionMenu','encore.ui.rxMetadata','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.utilities']);
+angular.module('encore.bridge', ['encore.ui.rxCollapse','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.utilities','encore.ui.elements']);
 
 /**
  * @ngdoc overview
@@ -59,7 +59,6 @@ angular.module('encore.bridge', ['encore.ui.layout','encore.ui.rxActionMenu','en
  * * {@link utilities.service:rxDOMHelper rxDOMHelper}
  * * {@link utilities.service:rxFeedbackSvc rxFeedbackSvc}
  * * {@link utilities.service:rxFormUtils rxFormUtils}
- * * {@link utilities.service:rxHideIfUkAccount rxHideIfUkAccount}
  * * {@link utilities.service:rxLocalStorage rxLocalStorage}
  * * {@link utilities.service:rxModalFooterTemplates rxModalFooterTemplates}
  * * {@link utilities.service:rxNestedElement rxNestedElement}
@@ -346,6 +345,228 @@ angular.module('encore.ui.utilities')
 
 /**
  * @ngdoc overview
+ * @name elements
+ * @requires utilities
+ * @description
+ * # Elements
+ * Elements are visual directives.
+ *
+ * ## Directives
+ * * {@link elements.directive:rxAccountInfo rxAccountInfo}
+ * * {@link elements.directive:rxActionMenu rxActionMenu}
+ * * {@link elements.directive:rxButton rxButton}
+ * * {@link elements.directive:rxCheckbox rxCheckbox}
+ * * {@link elements.directive:rxDatePicker rxDatePicker}
+ * * {@link elements.directive:rxMetadata rxMetadata}
+ * * {@link elements.directive:rxTimePicker rxTimePicker}
+ */
+angular.module('encore.ui.elements', [
+    'encore.ui.utilities'
+]);
+
+angular.module('encore.ui.elements')
+/**
+ * @ngdoc directive
+ * @name elements.directive:rxMetadata
+ * @restrict E
+ * @description
+ * Parent directive used for styling and arranging metadata information.
+ *
+ * <dl>
+ *   <dt>Display:</dt>
+ *   <dd>**block** *(full width of parent)*</dd>
+ *
+ *   <dt>Parent:</dt>
+ *   <dd>Any HTML Element</dd>
+ *
+ *   <dt>Siblings:</dt>
+ *   <dd>Any HTML Element</dd>
+ *
+ *   <dt>Children:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link elements.directive:rxMeta rxMeta}</li>
+ *       <li>SECTION element</li>
+ *     </ul>
+ *   </dd>
+ * </dl>
+ *
+ * It is highly recommended to use `<section>` blocks for purposes
+ * of arranging information into columns.
+ *
+ * Each `<section>` will be 300px wide and will wrap and stack vertically
+ * if the container isn't wide enought to accommodate all sections in a
+ * single row.
+ *
+ * @example
+ * <pre>
+ * <rx-metadata>
+ *   <section>
+ *     <rx-meta label="Status">
+ *       degraded; system maintenance
+ *     </rx-meta>
+ *   </section>
+ *   <section>
+ *     <rx-meta label="Field Name">Field Value Example</rx-meta>
+ *   </section>
+ *   <section>
+ *     <rx-meta label="Another Field Name">Another Field Value Example</rx-meta>
+ *   </section>
+ * </rx-metadata>
+ * </pre>
+ */
+.directive('rxMetadata', function () {
+    return {
+        restrict: 'E'
+    };
+});
+
+angular.module('encore.ui.elements')
+/**
+ * @ngdoc directive
+ * @name elements.directive:rxMeta
+ * @scope
+ * @restrict E
+ * @description
+ *
+ * <dl>
+ *   <dt>Display:</dt>
+ *   <dd>**block** *(full width of parent)*</dd>
+ *
+ *   <dt>Parent:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link elements.directive:rxMetadata rxMetadata}</li>
+ *       <li>SECTION element</li>
+ *     </ul>
+ *   </dd>
+ *
+ *   <dt>Siblings:</dt>
+ *   <dd>Any HTML Element</dd>
+ *
+ *   <dt>Children:</dt>
+ *   <dd>Any HTML Element</dd>
+ * </dl>
+ *
+ * ## Long Data Values
+ *
+ * For data values that do not naturally break to fit the width of the column, a `.force-word-break` CSS class is
+ * available on the `<rx-meta>` element to prevent the value from overflowing to adjacent content.
+ *
+ * <pre>
+ *   <rx-meta label="Super Long Value" class="force-word-break">
+ *     A super long data value with anunseeminglyunbreakablewordthatcouldoverflowtothenextcolumn
+ *   </rx-meta>
+ * </pre>
+
+ * @example
+ * <pre>
+ * <rx-metadata>
+ *   <section>
+ *     <rx-meta label="Status">
+ *       degraded; system maintenance
+ *     </rx-meta>
+ *   </section>
+ * </rx-metadata>
+ * </pre>
+ *
+ * @param {String=} label Label for metadata definition/value
+ */
+.directive('rxMeta', function () {
+    return {
+        restrict: 'E',
+        transclude: true,
+        templateUrl: 'templates/rxMeta.html',
+        scope: {
+            label: '@'
+        }
+    };
+});
+
+angular.module('encore.ui.elements')
+.config(function ($provide) {
+  $provide.decorator('rxActionMenuDirective', function ($delegate) {
+    // https://github.com/angular/angular.js/issues/10149
+    _.each(['type', 'text'], function (key) {
+      $delegate[0].$$isolateBindings[key] = {
+        attrName: key,
+        mode: '@',
+        optional: true
+      };
+    });
+    return $delegate;
+  });
+});
+
+angular.module('encore.ui.elements')
+/**
+ * @ngdoc directive
+ * @name elements.directive:rxActionMenu
+ * @restrict E
+ * @scope
+ * @description
+ *
+ * Component to add a clickable cog which brings up a menu of configurable actions.
+ *
+ * Normally the menu is dismissable by clicking anywhere on the page, but this can
+ * be disabled by passing an optional `global-dismiss="false"` attribute to the
+ * directive.
+ *
+ * @param {Boolean=} [globalDismiss=true] - optional attribute to make menu dismissable by clicking anywhere on the page
+ */
+.directive('rxActionMenu', function ($rootScope, $document) {
+    return {
+        restrict: 'E',
+        transclude: true,
+        templateUrl: 'templates/rxActionMenu.html',
+        scope: {
+            globalDismiss: '=?'
+        },
+        link: function ($scope, element) {
+            if (!_.isBoolean($scope.globalDismiss)) {
+                $scope.globalDismiss = true;
+            }
+            $scope.displayed = false;
+
+            $scope.toggle = function () {
+                $scope.displayed = !$scope.displayed;
+                $rootScope.$broadcast('actionMenuShow', element);
+            };
+
+            $scope.modalToggle = function () {
+                if ($scope.globalDismiss) {
+                    $scope.toggle();
+                }
+            };
+
+            $scope.$on('actionMenuShow', function (ev, el) {
+                if ($scope.globalDismiss && el[0] !== element[0]) {
+                    $scope.displayed = false;
+                }
+            });
+
+            $document.on('click', function (clickEvent) {
+                if ($scope.globalDismiss && $scope.displayed && !element[0].contains(clickEvent.target)) {
+                    $scope.$apply(function () { $scope.displayed = false;});
+                }
+            });
+
+            // TODO: Center the Action Menu box so it
+            // takes the height of the translucded content
+            // and then centers it with CSS.
+            // I spent an afternoon trying to see if I could
+            // repurpose angularjs' bootstrap popover library
+            // and their position.js file, but I spent too
+            // much time and had to table this.  -Ernie
+
+            // https://github.com/angular-ui/bootstrap/blob/master/src/position/position.js
+            // https://github.com/angular-ui/bootstrap/blob/master/src/tooltip/tooltip.js
+        }
+    };
+});
+
+/**
+ * @ngdoc overview
  * @name rxStatusColumn
  * @description
  * # rxStatusColumn Component
@@ -554,281 +775,72 @@ angular.module('encore.ui.rxSortableColumn')
 
 /**
  * @ngdoc overview
- * @name rxMetadata
+ * @name rxCollapse
  * @description
- * # rxMetadata Component
+ * # rxCollapse Component
  *
- * rxMetadata contains directives to provide consistent styling for
- * the display of metadata information.
- *
- * ## Organizing Metadata into Columns
- * It is highly recommended that you make use of `<section>` elements to separate metadata information into columns.
- * The `<section>` elements will be set to a fixed width and will wrap/stack if the container cannot fit all columns
- * in a single row.
- *
- * <pre>
- * <rx-metadata>
- *   <section>
- *     <rx-meta label="Status" id="metaStatus">Active</rx-meta>
- *     <rx-meta label="RCN">RCN-555-555-555</rx-meta>
- *     <rx-meta label="Type">Cloud</rx-meta>
- *     <rx-meta label="Service Level">Managed &rarr; Intensive</rx-meta>
- *     <rx-meta label="Service Type">DevOps &rarr; SysOps</rx-meta>
- *   </section>
- * </rx-metadata>
- * </pre>
- *
- * ## Long Data Values
- *
- * For data values that do not naturally break to fit the width of the column, a `.force-word-break` CSS class is
- * available on the `<rx-meta>` element to prevent the value from overflowing to adjacent content.
- *
- * <pre>
- *   <rx-meta label="Super Long Value" class="force-word-break">
- *     A super long data value with anunseeminglyunbreakablewordthatcouldoverflowtothenextcolumn
- *   </rx-meta>
- * </pre>
+ * `rxCollapse` component is used to display and hide content on a page.
  *
  * ## Directives
- * * {@link rxMetadata.directive:rxMetadata rxMetadata}
- * * {@link rxMetadata.directive:rxMeta rxMeta}
+ * * {@link rxCollapse.directive:rxCollapse rxCollapse}
  */
-angular.module('encore.ui.rxMetadata', []);
+angular.module('encore.ui.rxCollapse', []);
 
-angular.module('encore.ui.rxMetadata')
+angular.module('encore.ui.rxCollapse')
 /**
  * @ngdoc directive
- * @name rxMetadata.directive:rxMetadata
- * @restrict E
- * @description
- * Parent directive used for styling and arranging metadata information.
- *
- * <dl>
- *   <dt>Display:</dt>
- *   <dd>**block** *(full width of parent)*</dd>
- *
- *   <dt>Parent:</dt>
- *   <dd>Any HTML Element</dd>
- *
- *   <dt>Siblings:</dt>
- *   <dd>Any HTML Element</dd>
- *
- *   <dt>Children:</dt>
- *   <dd>
- *     <ul>
- *       <li>{@link rxMetadata.directive:rxMeta rxMeta}</li>
- *       <li>SECTION element</li>
- *     </ul>
- *   </dd>
- * </dl>
- *
- * It is highly recommended to use `<section>` blocks for purposes
- * of arranging information into columns.
- *
- * Each `<section>` will be 300px wide and will wrap and stack vertically
- * if the container isn't wide enought to accommodate all sections in a
- * single row.
- *
- * @example
- * <pre>
- * <rx-metadata>
- *   <section>
- *     <rx-meta label="Status">
- *       degraded; system maintenance
- *     </rx-meta>
- *   </section>
- *   <section>
- *     <rx-meta label="Field Name">Field Value Example</rx-meta>
- *   </section>
- *   <section>
- *     <rx-meta label="Another Field Name">Another Field Value Example</rx-meta>
- *   </section>
- * </rx-metadata>
- * </pre>
- */
-.directive('rxMetadata', function () {
-    return {
-        restrict: 'E'
-    };
-});
-
-angular.module('encore.ui.rxMetadata')
-/**
- * @ngdoc directive
- * @name rxMetadata.directive:rxMeta
- * @scope
- * @restrict E
- * @description
- *
- * <dl>
- *   <dt>Display:</dt>
- *   <dd>**block** *(full width of parent)*</dd>
- *
- *   <dt>Parent:</dt>
- *   <dd>
- *     <ul>
- *       <li>{@link rxMetadata.directive:rxMetadata rxMetadata}</li>
- *       <li>SECTION element</li>
- *     </ul>
- *   </dd>
- *
- *   <dt>Siblings:</dt>
- *   <dd>Any HTML Element</dd>
- *
- *   <dt>Children:</dt>
- *   <dd>Any HTML Element</dd>
- * </dl>
- *
- * @example
- * <pre>
- * <rx-metadata>
- *   <section>
- *     <rx-meta label="Status">
- *       degraded; system maintenance
- *     </rx-meta>
- *   </section>
- * </rx-metadata>
- * </pre>
- *
- * @param {String=} label Label for metadata definition/value
- */
-.directive('rxMeta', function () {
-    return {
-        restrict: 'E',
-        transclude: true,
-        templateUrl: 'templates/rxMeta.html',
-        scope: {
-            label: '@'
-        }
-    };
-});
-
-/**
- * @ngdoc overview
- * @name rxActionMenu
- * @description
- * # rxActionMenu Component
- *
- * A component to create a configurable action menu.
- *
- * ## Directives
- * * {@link rxActionMenu.directive:rxActionMenu rxActionMenu}
- */
-angular.module('encore.ui.rxActionMenu', []);
-
-angular.module('encore.ui.rxActionMenu')
-/**
- * @ngdoc directive
- * @name rxActionMenu.directive:rxActionMenu
+ * @name rxCollapse.directive:rxCollapse
  * @restrict E
  * @scope
  * @description
+ * `rxCollapse` directive hides and shows an element with a transition.  It can be configured to show as either expanded
+ * or collapsed on page load.  A double chevron(**>>**) is used to toggle between show and hide contents, while keeping
+ * the header and border visible.
  *
- * Component to add a clickable cog which brings up a menu of configurable actions.
+ * ## Hide/Show Content
  *
- * Normally the menu is dismissable by clicking anywhere on the page, but this can
- * be disabled by passing an optional `global-dismiss="false"` attribute to the
- * directive.
+ * * This pattern was developed for areas displaying metadata that may be short on screen real estate, as a way to hide
+ *  data on load that is not as important to the user in the context where they are presented.  `rxCollapse` toggles
+ *  between the *optional* `title` parameter with "*See More*" or "*See Less*".
+ * * This pattern is not very responsive-friendly, since as browser width decreases, columns will wrap. As columns wrap,
+ *  the "*See More*" `rxCollapse` elements get lost in the new context, which is bad for user experience.
+ * * To avoid the problem described above, "*See More*" `rxCollapse` elements should only be used at the end of the
+ * final column present on the page, so that when the columns wrap via flexbox, "*See More*" is always last and doesn't
+ * get lost in between metadata key/value pairs.
  *
- * @param {Boolean=} [globalDismiss=true] - optional attribute to make menu dismissable by clicking anywhere on the page
+ *
+ * @param {String=} [title="See More/See Less"]
+ * The title to display next to the toggle button. Default is "See More/See Less" toggle.
+ * @param {Boolean=} [expanded='true']
+ * Initially expanded or collapsed. Default is expanded.
+ *
+ * @example
+ * <pre>
+ * <rx-collapse title="Filter results" expanded="true">Text Here</rx-collapse>
+ * <rx-collapse expanded="true">Text Here</rx-collapse>
+ * </pre>
  */
-.directive('rxActionMenu', function ($rootScope, $document) {
+.directive('rxCollapse', function () {
     return {
         restrict: 'E',
+        templateUrl: 'templates/rxCollapse.html',
         transclude: true,
-        templateUrl: 'templates/rxActionMenu.html',
         scope: {
-            globalDismiss: '=?'
+            title: '@'
         },
-        link: function ($scope, element) {
-            if (!_.isBoolean($scope.globalDismiss)) {
-                $scope.globalDismiss = true;
-            }
-            $scope.displayed = false;
+        link: function (scope, element, attrs) {
+            scope.isExpanded = (attrs.expanded === 'false') ? false : true;
 
-            $scope.toggle = function () {
-                $scope.displayed = !$scope.displayed;
-                $rootScope.$broadcast('actionMenuShow', element);
+            scope.toggleExpanded = function () {
+                scope.isExpanded = !scope.isExpanded;
             };
-
-            $scope.modalToggle = function () {
-                if ($scope.globalDismiss) {
-                    $scope.toggle();
-                }
-            };
-
-            $scope.$on('actionMenuShow', function (ev, el) {
-                if ($scope.globalDismiss && el[0] !== element[0]) {
-                    $scope.displayed = false;
-                }
-            });
-
-            $document.on('click', function (clickEvent) {
-                if ($scope.globalDismiss && $scope.displayed && !element[0].contains(clickEvent.target)) {
-                    $scope.$apply(function () { $scope.displayed = false;});
-                }
-            });
-
-            // TODO: Center the Action Menu box so it
-            // takes the height of the translucded content
-            // and then centers it with CSS.
-            // I spent an afternoon trying to see if I could
-            // repurpose angularjs' bootstrap popover library
-            // and their position.js file, but I spent too
-            // much time and had to table this.  -Ernie
-
-            // https://github.com/angular-ui/bootstrap/blob/master/src/position/position.js
-            // https://github.com/angular-ui/bootstrap/blob/master/src/tooltip/tooltip.js
         }
     };
 });
 
-angular.module('encore.ui.rxActionMenu')
-.config(function ($provide) {
-  $provide.decorator('rxActionMenuDirective', function ($delegate) {
-    // https://github.com/angular/angular.js/issues/10149
-    _.each(['type', 'text'], function (key) {
-      $delegate[0].$$isolateBindings[key] = {
-        attrName: key,
-        mode: '@',
-        optional: true
-      };
-    });
-    return $delegate;
-  });
-});
-
-/**
- * @ngdoc overview
- * @name layout
- * @description
- * # layout Component
- *
- * Encore UI includes a grid system forked from
- * [Angular Material's layout module](https://material.angularjs.org/#/layout/container)
- * with minor usability enhancements to provide an assortment of attribute-based
- * layout options based on the flexbox layout model. Included are intuitive attribute
- * based styles that ease the creation of responsive row and/or column based page layouts.
- *
- * ## Note About Responsive Features
- *
- * Two versions of the Encore UI CSS file are included in this project. One includes
- * responsive design style attributes (encore-ui-resp-x.x.x.css). The other omits
- * these attributes to save space if desired (encore-ui-x.x.x.css). Be sure to only
- * include the appropriate css file for your project. Any attributes which include
- * the following suffixes require the responsive css file to work:
- * '-sm', '-gt-sm', '-md', '-gt-md', '-lg', '-gt-lg'.
- */
-angular.module('encore.ui.layout', []);
-
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
-  $templateCache.put('templates/rxActionMenu.html',
-    '<div class="rs-dropdown rs-{{type}}-dropdown" ng-class="{\'rs-nav-item\': type}"><a ng-if="text" class="rs-nav-link rs-dropdown-toggle" ng-click="toggle()">{{text}} <i class="rs-caret"></i> </a><button ng-if="!text" class="rs-cog" ng-click="toggle()"></button><div ng-class="{\'visible\': displayed }" ng-click="modalToggle()" ng-transclude></div></div>');
-}]);
-
-angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
-  $templateCache.put('templates/rxMeta.html',
-    '<!-- TODO: remove in favor of auto detection --><div><div class="label">{{label}}:</div><div class="definition ng-transclude"></div></div>');
+  $templateCache.put('templates/rxCollapse.html',
+    '<div class="rs-facet-section rs-collapsible-section {{isExpanded ? \'expanded\' : \'collapsed\'}}"><div ng-if="title" class="rs-detail-section-header"><div class="rs-caret" ng-click="toggleExpanded()"></div><div class="rs-detail-section-title">{{title}}</div></div><div class="rs-detail-section-body" ng-transclude></div><div ng-if="!title && !isExpanded" class="rs-facet-section-toggle" ng-click="toggleExpanded()"><i class="rs-facet-toggle-arrow"></i> more</div><div ng-if="!title && isExpanded" class="rs-facet-section-toggle" ng-click="toggleExpanded()"><i class="rs-facet-toggle-arrow"></i> less</div></div>');
 }]);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
@@ -839,4 +851,14 @@ angular.module('encore.bridge').run(['$templateCache', function($templateCache) 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxStatusColumn.html',
     '<span></span>');
+}]);
+
+angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
+  $templateCache.put('templates/rxActionMenu.html',
+    '<div class="rs-dropdown rs-{{type}}-dropdown" ng-class="{\'rs-nav-item\': type}"><a ng-if="text" class="rs-nav-link rs-dropdown-toggle" ng-click="toggle()">{{text}} <i class="rs-caret"></i> </a><button ng-if="!text" class="rs-cog" ng-click="toggle()"></button><div ng-class="{\'visible\': displayed }" ng-click="modalToggle()" ng-transclude></div></div>');
+}]);
+
+angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
+  $templateCache.put('templates/rxMeta.html',
+    '<!-- TODO: remove in favor of auto detection --><div><div class="label">{{label}}:</div><div class="definition ng-transclude"></div></div>');
 }]);
