@@ -14,6 +14,9 @@ angular.module('demoApp', [
     templateUrl: 'rxForm.html',
     controller: 'rxFormDemoCtrl'
   })
+  .when('/components/rxPopover', {
+    templateUrl: 'rxPopover.html'
+  })
   .when('/components/rxRadio', {
     templateUrl: 'rxRadio.html',
     controller: 'rxRadioCtrl'

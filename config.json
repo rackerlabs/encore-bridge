@@ -4,6 +4,7 @@
     "components": [
       "rxCollapse",
       "rxForm",
+      "rxPopover",
       "rxRadio",
       "rxSortableColumn",
       "rxStatusColumn"
