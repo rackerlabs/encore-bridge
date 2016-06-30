@@ -3,14 +3,18 @@
   "modules": {
     "components": [
       "rxCollapse",
+      "rxForm",
+      "rxRadio",
       "rxSortableColumn",
       "rxStatusColumn"
     ],
     "elements": [
       "ActionMenu",
+      "Forms",
       "Metadata"
     ],
     "utilities": [
+      "rxNestedElement",
       "rxSortUtil",
       "rxStatusColumnIcons",
       "rxStatusMappings"

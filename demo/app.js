@@ -10,6 +10,14 @@ angular.module('demoApp', [
   .when('/components/rxCollapse', {
     templateUrl: 'rxCollapse.html',
   })
+  .when('/components/rxForm', {
+    templateUrl: 'rxForm.html',
+    controller: 'rxFormDemoCtrl'
+  })
+  .when('/components/rxRadio', {
+    templateUrl: 'rxRadio.html',
+    controller: 'rxRadioCtrl'
+  })
   .when('/components/rxSortableColumn', {
     templateUrl: 'rxSortableColumn.html',
     controller: 'rxSortableColumnCtrl'
@@ -18,9 +26,15 @@ angular.module('demoApp', [
     templateUrl: 'rxStatusColumn.html',
     controller: 'rxStatusColumnCtrl'
   })
+  .when('/components/:id', {
+    template: 'Component not supported'
+  })
   .when('/elements/ActionMenu', {
     templateUrl: 'rxActionMenu.html',
     controller: 'rxActionMenuCtrl'
+  })
+  .when('/elements/Forms', {
+    templateUrl: 'forms.docs.html'
   })
   .when('/elements/Metadata', {
     templateUrl: 'rxMetadata.html',
@@ -37,7 +51,7 @@ angular.module('demoApp', [
     return _.last(mod.split('.'));
   })
   .value();
-  $rootScope.elements = ['ActionMenu', 'Metadata'];
+  $rootScope.elements = ['ActionMenu', 'Forms', 'Metadata'];
 
   $rootScope.$on('$routeChangeSuccess', function (event, route) {
     $rootScope.activePrimaryNavItem = route.$$route.originalPath.split('/')[1];
