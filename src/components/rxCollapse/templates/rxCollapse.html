@@ -1,0 +1,18 @@
+<div class="rs-facet-section rs-collapsible-section {{isExpanded ? 'expanded' : 'collapsed'}}">
+  <div ng-if="title" class="rs-detail-section-header">
+    <div class="rs-caret" ng-click="toggleExpanded()"></div>
+    <div class="rs-detail-section-title">{{title}}</div>
+  </div>
+
+  <div class="rs-detail-section-body" ng-transclude></div>
+
+  <div ng-if="!title && !isExpanded" class="rs-facet-section-toggle" ng-click="toggleExpanded()">
+    <i class="rs-facet-toggle-arrow"></i>
+    more
+  </div>
+
+  <div ng-if="!title && isExpanded" class="rs-facet-section-toggle" ng-click="toggleExpanded()">
+    <i class="rs-facet-toggle-arrow"></i>
+    less
+  </div>
+</div>

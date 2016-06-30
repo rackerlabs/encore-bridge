@@ -1,7 +1,7 @@
 {
   "name": "encore-bridge",
   "dependencies": {
-    "encore-ui": "2.0.0-5",
+    "encore-ui": "2.0.0",
     "canon": "~1.8.1"
   },
   "overrides": {

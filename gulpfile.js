@@ -13,13 +13,17 @@ const vinylFs = require('vinyl-fs');
 const config = require('./config.json');
 const fsLayer = require('./vinyl-fs-layer');
 
-const mountComponent = (c) => {
-  return fsLayer.read(`${config.submodule}/components/${c}`)
-  .pipe(fsLayer.mount(`src/${c}`));
+const mount = (type) => (name) => {
+  return fsLayer.read(`${config.submodule}/${type}s/${name}`)
+  .pipe(fsLayer.mount(`src/${type}s/${name}`))
 };
 
 const files = () => merge.apply(null,
-  _.map(config.modules.components, mountComponent)
+  _.map(config.modules.components, mount('component'))
+  .concat(_.map(config.modules.elements, mount('element')))
+  .concat(vinylFs.src(`${config.submodule}/elements/elements.module.js`, {
+    base: `${config.submodule}/elements`
+  }))
   .concat(_.map(config.modules.utilities, (u) => fsLayer.read(`${config.submodule}/utilities/${u}`)))
   // gulp 3 uses vinyl 0.3, which doesn't support the base option, which is needed for the stem
   .concat(vinylFs.src(`${config.submodule}/utilities/utilities.module.js`, {
@@ -47,7 +51,7 @@ function buildTemplates () {
 }
 
 gulp.task('build:scripts', function () {
-  let modules = _.map(config.modules.components, (c) => `encore.ui.${c}`).concat('encore.ui.utilities');
+  let modules = _.map(config.modules.components, (c) => `encore.ui.${c}`).concat(['encore.ui.utilities', 'encore.ui.elements']);
   merge(buildScripts(), buildTemplates())
   .pipe(concat('encore-bridge.js'))
   .pipe(insert.prepend("angular.module('encore.bridge', ['" + modules.join("','") + "']);\n\n"))
@@ -61,12 +65,14 @@ gulp.task('build:styles', function () {
   .pipe(gulp.dest('./demo/'));
 });
 
-gulp.task('watch', ['build:styles', 'build:scripts'], function () {
+gulp.task('build', ['build:styles', 'build:scripts']);
+
+gulp.task('watch', ['build'], function () {
   gulp.watch('src/**/*.less', ['build:styles']);
   gulp.watch('src/**/*', ['build:scripts']);
 });
 
-gulp.task('demo', function () {
+gulp.task('demo', ['build'], function () {
   const templates = files()
   .pipe(filter('**/docs/*.html'))
   .pipe(htmlmin({
@@ -79,8 +85,7 @@ gulp.task('demo', function () {
   }));
 
   const scripts = files()
-  .pipe(filter('**/docs/*.js'))
-  .pipe(filter((file) => !file.stem.includes('.')));
+  .pipe(filter('**/docs/**/*.js'))
 
   merge(scripts, templates)
   .pipe(concat('demo.js'))

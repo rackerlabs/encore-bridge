@@ -2,10 +2,13 @@
   "submodule": "encore-ui/src",
   "modules": {
     "components": [
-      "rxActionMenu",
-      "rxMetadata",
+      "rxCollapse",
       "rxSortableColumn",
       "rxStatusColumn"
+    ],
+    "elements": [
+      "ActionMenu",
+      "Metadata"
     ],
     "utilities": [
       "rxSortUtil",

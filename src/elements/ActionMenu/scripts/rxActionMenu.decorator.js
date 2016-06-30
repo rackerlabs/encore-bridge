@@ -1,4 +1,4 @@
-angular.module('encore.ui.rxActionMenu')
+angular.module('encore.ui.elements')
 .config(function ($provide) {
   $provide.decorator('rxActionMenuDirective', function ($delegate) {
     // https://github.com/angular/angular.js/issues/10149
