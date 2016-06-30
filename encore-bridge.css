@@ -8,34 +8,6 @@
   overflow: hidden;
 }
 
-.rs-dropdown > .visible > .rs-dropdown-menu {
-  display: block;
-}
-
-rx-metadata {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-rx-metadata rx-meta {
-  display: block;
-  margin: 0 0 10px;
-  zoom: 1;
-}
-rx-metadata rx-meta .label {
-  clear: left;
-  float: left;
-  color: #999;
-  text-align: right;
-  width: 120px;
-}
-rx-metadata rx-meta .definition {
-  margin-left: 140px;
-}
-rx-metadata rx-meta.force-word-break {
-  word-break: break-all;
-}
-
 rx-collapse {
   display: block;
 }
@@ -45,6 +17,47 @@ rx-metadata rx-collapse .rs-detail-section-body {
 }
 rx-metadata rx-collapse .rs-facet-section-toggle {
   margin-left: 60px;
+}
+
+.rxRadio {
+  display: inline-block;
+}
+.rxRadio + label {
+  display: inline-block;
+  padding-left: 6px;
+}
+
+[rx-form],
+rx-form-section,
+rx-field,
+rx-field-name,
+rx-field-content,
+rx-input {
+  display: block;
+}
+rx-form-section {
+  margin-bottom: 10px;
+  clear: left;
+}
+rx-field-name {
+  margin-bottom: 10px;
+  float: left;
+  margin-top: 2px;
+  width: 160px;
+}
+rx-field-content {
+  margin-left: 180px;
+}
+rx-input label {
+  display: inline-block;
+  padding-left: 6px;
+}
+rx-help-text {
+  color: #666666;
+  display: block;
+}
+.rxCheckbox {
+  display: inline-block;
 }
 
 [rx-status-column] {
@@ -73,4 +86,32 @@ rx-metadata rx-collapse .rs-facet-section-toggle {
 .rx-status-header {
   padding: 0;
   width: 10px;
+}
+
+rx-metadata {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+rx-metadata rx-meta {
+  display: block;
+  margin: 0 0 10px;
+  zoom: 1;
+}
+rx-metadata rx-meta .label {
+  clear: left;
+  float: left;
+  color: #999;
+  text-align: right;
+  width: 120px;
+}
+rx-metadata rx-meta .definition {
+  margin-left: 140px;
+}
+rx-metadata rx-meta.force-word-break {
+  word-break: break-all;
+}
+
+.rs-dropdown > .visible > .rs-dropdown-menu {
+  display: block;
 }

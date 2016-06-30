@@ -1,4 +1,4 @@
-angular.module('encore.bridge', ['encore.ui.rxCollapse','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.utilities','encore.ui.elements']);
+angular.module('encore.bridge', ['encore.ui.rxCollapse','encore.ui.rxForm','encore.ui.rxRadio','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.utilities','encore.ui.elements']);
 
 /**
  * @ngdoc overview
@@ -343,6 +343,61 @@ angular.module('encore.ui.utilities')
     return util;
 });
 
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxNestedElement
+ * @description
+ * Helper function to aid in the creation of boilerplate DDO definitions
+ * required to validate nested custom elements.
+ *
+ * @param {Object=} opts - Options to merge with default DDO definitions
+ * @param {String} opts.parent - Parent directive name
+ * (i.e. defined NestedElement is an immediate child of this parent element)
+ *
+ * @return {Object} Directive Definition Object for a rxNestedElement
+ *
+ * @example
+ * <pre>
+ * angular.module('myApp', [])
+ * .directive('parentElement', function (rxNestedElement) {
+ *   return rxNestedElement();
+ * })
+ * .directive('childElement', function (rxNestedElement) {
+ *   return rxNestedElement({
+ *      parent: 'parentElement'
+ *   });
+ * });
+ * </pre>
+ */
+.factory('rxNestedElement', function () {
+    return function (opts) {
+        opts = opts || {};
+
+        var defaults = {
+            restrict: 'E',
+            /*
+             * must be defined for a child element to verify
+             * correct hierarchy
+             */
+            controller: angular.noop
+        };
+
+        if (angular.isDefined(opts.parent)) {
+            opts.require = '^' + opts.parent;
+            /*
+             * bare minimum function definition needed for "require"
+             * validation logic
+             *
+             * NOTE: `angular.noop` and `_.noop` WILL NOT trigger validation
+             */
+            opts.link = function () {};
+        }
+
+        return _.defaults(opts, defaults);
+    };
+});
+
 /**
  * @ngdoc overview
  * @name elements
@@ -484,19 +539,468 @@ angular.module('encore.ui.elements')
 });
 
 angular.module('encore.ui.elements')
-.config(function ($provide) {
-  $provide.decorator('rxActionMenuDirective', function ($delegate) {
-    // https://github.com/angular/angular.js/issues/10149
-    _.each(['type', 'text'], function (key) {
-      $delegate[0].$$isolateBindings[key] = {
-        attrName: key,
-        mode: '@',
-        optional: true
-      };
-    });
-    return $delegate;
-  });
+/**
+ * @name elements.directive:rxTimePicker
+ * @ngdoc directive
+ * @restrict E
+ * @scope
+ * @requires utilities.service:rxTimePickerUtil
+ * @requires utilities.constant:UtcOffsets
+ * @requires elements.directive:rxButton
+ * @description Time Picker
+ *
+ * ## Notice
+ * This element is designed to be used in conjunction with other picker
+ * elements to compose a valid ISO 8601 DateTime string in the format of
+ * <code>YYYY-MM-DDTHH:mmZ</code>.
+ *
+ * * This element will generate a **String** in the format of `HH:mmZ`
+ *   to be used as the time portion of the ISO 8601 standard DateTime string
+ *   mentioned above.
+ * * This element will never generate anything other than a String.
+ *
+ * @param {expression} ngModel
+ * Expression that evaluates to a time string in `HH:mmZ` format, where `Z`
+ * should match `/[-+]\d{2}:\d{2}/`.
+ *
+ * @return {String} **IMPORTANT** returns an ISO 8601 standard time string in the
+ * format of `HH:mmZ`.
+ */
+.directive('rxTimePicker', function (rxTimePickerUtil, UtcOffsets) {
+    return {
+        restrict: 'E',
+        require: 'ngModel',
+        scope: {
+            modelValue: '=ngModel',
+            isDisabled: '=ngDisabled'
+        },
+        templateUrl: 'templates/rxTimePicker.html',
+        link: function (scope, el, attrs, ngModelCtrl) {
+            var pickerUtil = rxTimePickerUtil;
+
+            scope.availableUtcOffsets = UtcOffsets;
+
+            scope.isPickerVisible = false;
+
+            scope.openPopup = function () {
+                scope.isPickerVisible = true;
+
+                // default
+                scope.hour = '';
+                scope.minutes = '';
+                scope.period = 'AM';
+                scope.offset = '+00:00';
+
+                if (!_.isEmpty(scope.modelValue)) {
+                    var parsed = pickerUtil.modelToObject(scope.modelValue);
+                    scope.hour = parsed.hour;
+                    scope.minutes = parsed.minutes;
+                    scope.period = parsed.period;
+                    scope.offset = parsed.offset;
+                }
+            };//openPopup
+
+            scope.closePopup = function () {
+                scope.isPickerVisible = false;
+            };
+
+            /**
+             * Toggle the popup and initialize form values.
+             */
+            scope.togglePopup = function () {
+                if (!scope.isDisabled) {
+                    if (scope.isPickerVisible) {
+                        scope.closePopup();
+                    } else {
+                        scope.openPopup();
+                    }
+                }
+            };//togglePopup()
+
+            /**
+             * Apply the popup selections to the $viewValue.
+             */
+            scope.submitPopup = function () {
+                var time = moment([
+                    (scope.hour + ':' + scope.minutes),
+                    scope.period,
+                    scope.offset
+                ].join(' '), 'hh:mm A Z');
+
+                // ensure moment is in expected timezone
+                time.utcOffset(scope.offset);
+
+                ngModelCtrl.$setViewValue(time.format(pickerUtil.viewFormat));
+
+                // update the view
+                ngModelCtrl.$render();
+
+                scope.closePopup();
+            };//submitPopup()
+
+            /* Model -> View */
+            ngModelCtrl.$formatters.push(function (modelVal) {
+                var momentValue = moment(modelVal, pickerUtil.modelFormat);
+
+                if (momentValue.isValid()) {
+                    var offset = pickerUtil.parseUtcOffset(modelVal);
+
+                    // change offset of moment to that of model value
+                    // without this, moment will default to local offset
+                    // (CST = -06:00) and the formatted output will be incorrect
+                    momentValue.utcOffset(offset);
+
+                    // Ensure that display value is in proper format
+                    return momentValue.format(pickerUtil.viewFormat);
+                } else {
+                    return modelVal;
+                }
+            });
+
+            /* View -> Model */
+            ngModelCtrl.$parsers.push(function (viewVal) {
+                var momentValue = moment(viewVal, pickerUtil.viewFormat);
+
+                if (momentValue.isValid()) {
+                    var offset = pickerUtil.parseUtcOffset(viewVal);
+
+                    // change offset of moment to that of view value
+                    // without this, moment will default to local offset
+                    // (CST = -06:00) and the formatted output will be incorrect
+                    momentValue.utcOffset(offset);
+
+                    // Ensure that model value is in proper format
+                    return momentValue.format(pickerUtil.modelFormat);
+                } else {
+                    return viewVal;
+                }
+            });
+
+            ngModelCtrl.$render = function () {
+                scope.displayValue = ngModelCtrl.$viewValue || '';
+            };
+        }//link
+    };
 });
+
+angular.module('encore.ui.elements')
+/**
+ * @name elements.directive:rxDatePicker
+ * @ngdoc directive
+ * @restrict E
+ * @scope
+ * @description
+ * Basic date picker.
+ *
+ * ## Notice
+ * This element is designed to be used in conjunction with other picker
+ * elements to compose a valid ISO 8601 DateTime string in the format of
+ * <code>YYYY-MM-DDTHH:mmZ</code>.
+ *
+ * `rxDatePicker` provides the user a 10-year range before and after the selected date,
+ * if present.  Otherwise, the range is calculated from today's date.
+ *
+ * * This element will generate a **String** in the format of `YYYY-MM-DD`
+ *   to be used as the date portion of the ISO 8601 standard DateTime string
+ *   mentioned above.
+ * * This element will never generate anything other than a String.
+ *
+ * @param {expression} ngModel
+ * Expression that evaluates to a date string in `YYYY-MM-DD` format
+ *
+ * @return {String} **IMPORTANT** returns an ISO 8601 standard date string in the
+ * format of `YYYY-MM-DD`.
+ */
+.directive('rxDatePicker', function () {
+    var isoFormat = 'YYYY-MM-DD';
+    const YEAR_RANGE = 10;
+
+    /**
+     * @param {Moment} firstOfMonth
+     * @return {Array<Moment>}
+     * @description
+     * Generate an array of Moment objects representing the visible
+     * days on the calendar. This will automatically pad the calendar
+     * with dates from previous/next month to fill out the weeks.
+     */
+    function buildCalendarDays (firstOfMonth) {
+        var dateToken = firstOfMonth.clone().startOf('day');
+        var currentMonth = dateToken.month();
+        var days = [];
+        var prependDay, appendDay;
+
+        // add calendar month's days
+        while (dateToken.month() === currentMonth) {
+            days.push(dateToken.clone());
+            dateToken.add(1, 'day');
+        }
+
+        // until first item of array is Sunday, prepend earlier days to array
+        while (_.first(days).day() > 0) {
+            prependDay = _.first(days).clone();
+            days.unshift(prependDay.subtract(1, 'day'));
+        }
+
+        // until last item of array is Saturday, append later days to array
+        while (_.last(days).day() < 6) {
+            appendDay = _.last(days).clone();
+            days.push(appendDay.add(1, 'day'));
+        }
+
+        return days;
+    }//buildCalendarDays
+
+    /**
+     * @param {Moment} midpoint
+     * @return {Array<ISO 8601 Year> }
+     * @description
+     * Generate an array of ISO 8601 Year (format "YYYY") years.
+     */
+    function generateCalendarYears (midpoint) {
+        var calendarYears = [];
+        var iterator = midpoint.clone().subtract(YEAR_RANGE, 'years');
+        var limit = midpoint.clone().add(YEAR_RANGE, 'years');
+
+        while (iterator.year() <= limit.year()) {
+            calendarYears.push(iterator.year());
+
+            iterator.add(1, 'year');
+        }
+
+        return calendarYears;
+    }//generateCalendarYears
+
+    return {
+        templateUrl: 'templates/rxDatePicker.html',
+        restrict: 'E',
+        require: 'ngModel',
+        scope: {
+            selected: '=ngModel'
+        },
+        link: function (scope, element, attrs, ngModelCtrl) {
+            var today = moment(new Date());
+
+            scope.calendarVisible = false;
+            // keep track of which month we're viewing in the popup (default to 1st of this month)
+            scope.calendarMonth = today.clone().startOf('month');
+
+            /* ===== "Public" Functions ===== */
+            scope.toggleCalendar = function () {
+                if (_.isUndefined(attrs.disabled)) {
+                    scope.calendarVisible = !scope.calendarVisible;
+                }
+            };//toggleCalendar()
+
+            scope.closeCalendar = function () {
+                scope.calendarVisible = false;
+            };
+
+            /**
+             * @param {String} destination
+             * @description Modifies `scope.calendarMonth` to regenerate calendar
+             */
+            scope.navigate = function (destination) {
+                var newCalendarMonth = scope.calendarMonth.clone();
+                switch (destination) {
+                    case 'nextMonth': {
+                        newCalendarMonth.add(1, 'month');
+                        break;
+                    }
+                    case 'prevMonth': {
+                        newCalendarMonth.subtract(1, 'month');
+                        break;
+                    }
+                }
+                scope.calendarMonth = newCalendarMonth;
+            };//navigate
+
+            /**
+             * @param {Moment} date
+             */
+            scope.selectDate = function (date) {
+                scope.selected = date.format(isoFormat);
+                scope.calendarVisible = false;
+            };//selectDate()
+
+            /**
+             * @param {Moment} day
+             * @return {Boolean}
+             */
+            scope.isToday = function (day) {
+                return moment(day).isSame(today, 'day');
+            };//isToday()
+
+            /**
+             * @param {Moment} day
+             * @return {Boolean}
+             */
+            scope.isMonth = function (day) {
+                return moment(day).isSame(scope.calendarMonth, 'month');
+            };//isMonth()
+
+            /**
+             * @param {Moment} day
+             * @return {Boolean}
+             */
+            scope.isSelected = function (day) {
+                if (_.isUndefined(scope.selected)) {
+                    return false;
+                } else {
+                    return moment(day).isSame(scope.selected, 'day');
+                }
+            };//isSelected()
+
+            /* ===== OBSERVERS ===== */
+
+            // Set calendar month on change of selected date
+            scope.$watch('selected', function (newVal) {
+                if (_.isEmpty(newVal)) {
+                    scope.calendarMonth = today.clone().startOf('month');
+                } else {
+                    var parsed = moment(newVal, isoFormat);
+
+                    if (parsed.isValid()) {
+                        scope.calendarMonth = parsed.startOf('month');
+                    }
+                }
+            });
+
+            // Regenerate calendar if month changes
+            scope.$watch('calendarMonth', function (newVal) {
+                scope.calendarDays = buildCalendarDays(newVal);
+                scope.currentMonth = newVal.format('MM');
+                scope.currentYear = newVal.format('YYYY');
+                scope.calendarYears = generateCalendarYears(newVal);
+            });
+
+            scope.$watch('currentMonth', function (newVal) {
+                if (!_.isEmpty(newVal)) {
+                    var dateString = [scope.currentYear, newVal, '01'].join('-');
+                    var parsed = moment(dateString, isoFormat);
+
+                    if (parsed.isValid()) {
+                        scope.calendarMonth = parsed;
+                    }
+                }
+            });
+
+            scope.$watch('currentYear', function (newVal) {
+                if (!_.isEmpty(newVal)) {
+                    var dateString = [newVal, scope.currentMonth, '01'].join('-');
+                    var parsed = moment(dateString, isoFormat);
+
+                    if (parsed.isValid()) {
+                        scope.calendarMonth = parsed;
+                    }
+                }
+            });
+
+            ngModelCtrl.$formatters.push(function (modelVal) {
+                var parsed = moment(modelVal, isoFormat);
+                ngModelCtrl.$setValidity('date', parsed.isValid());
+
+                if (parsed.isValid()) {
+                    return parsed.format('MMMM DD, YYYY');
+                } else {
+                    return null;
+                }
+            });
+
+            ngModelCtrl.$render = function () {
+                scope.displayValue = ngModelCtrl.$viewValue;
+            };
+        }
+    };
+});
+
+angular.module('encore.ui.elements')
+/**
+ * @name elements.directive:rxCheckbox
+ * @ngdoc directive
+ * @restrict A
+ * @scope
+ * @description
+ * Attribute directive that wraps a native checkbox element in markup required for styling purposes.
+ *
+ * ## Styling
+ *
+ * Directive results in an **inline-block element**
+ * You can style the output against decendents of the **`.rxCheckbox`** CSS class.
+ *
+ * ## Show/Hide
+ *
+ * If you wish to show/hide your `rxCheckbox` element (and its label), we recommend
+ * placing the element (and its label) inside of a `<div>` or `<span>` wrapper,
+ * and performing the show/hide logic on the wrapper.
+ *
+ * <pre>
+ * <span ng-show="isShown">
+ *     <input rx-checkbox id="chkDemo" ng-model="chkDemo" />
+ *     <label for="chkDemo">Label for Demo Checkbox</label>
+ * </span>
+ * </pre>
+ *
+ * It is highly recommended that you use `ng-show` and `ng-hide` for purposes of
+ * display logic. Because of the way that `ng-if` and `ng-switch` directives behave
+ * with scope, they may introduce unnecessary complexity in your code.
+ *
+ * @example
+ * <pre>
+ * <input rx-checkbox ng-model="demoValue" />
+ * </pre>
+ *
+ * @param {Boolean=} [ng-disabled=false] Determines if the control is disabled.
+ */
+.directive('rxCheckbox', function () {
+    return {
+        restrict: 'A',
+        scope: {
+            ngDisabled: '=?'
+        },
+        compile: function (tElement, tAttrs) {
+            // automatically set input type
+            tElement.attr('type', 'checkbox');
+            tAttrs.type = 'checkbox';
+
+            return function (scope, element, attrs) {
+                var disabledClass = 'rx-disabled';
+                var wrapper = '<div class="rxCheckbox"></div>';
+                var fakeCheckbox = '<div class="fake-checkbox">' +
+                        '<div class="tick fa fa-check"></div>' +
+                    '</div>';
+
+                element.wrap(wrapper);
+                element.after(fakeCheckbox);
+                // must be defined AFTER the element is wrapped
+                var parent = element.parent();
+
+                // apply/remove disabled attribute so we can
+                // apply a CSS selector to style sibling elements
+                if (attrs.disabled) {
+                    parent.addClass(disabledClass);
+                }
+                if (_.has(attrs, 'ngDisabled')) {
+                    scope.$watch('ngDisabled', function (newVal) {
+                        if (newVal === true) {
+                            parent.addClass(disabledClass);
+                        } else {
+                            parent.removeClass(disabledClass);
+                        }
+                    });
+                }
+
+                var removeParent = function () {
+                    parent.remove();
+                };
+
+                // remove stylistic markup when element is destroyed
+                element.on('$destroy', function () {
+                    scope.$evalAsync(removeParent);
+                });
+            };
+        }//compile
+    };
+});//rxCheckbox
 
 angular.module('encore.ui.elements')
 /**
@@ -563,6 +1067,21 @@ angular.module('encore.ui.elements')
             // https://github.com/angular-ui/bootstrap/blob/master/src/tooltip/tooltip.js
         }
     };
+});
+
+angular.module('encore.ui.elements')
+.config(function ($provide) {
+  $provide.decorator('rxActionMenuDirective', function ($delegate) {
+    // https://github.com/angular/angular.js/issues/10149
+    _.each(['type', 'text'], function (key) {
+      $delegate[0].$$isolateBindings[key] = {
+        attrName: key,
+        mode: '@',
+        optional: true
+      };
+    });
+    return $delegate;
+  });
 });
 
 /**
@@ -775,6 +1294,905 @@ angular.module('encore.ui.rxSortableColumn')
 
 /**
  * @ngdoc overview
+ * @name rxRadio
+ * @description
+ * # rxRadio Component
+ *
+ * The rxRadio component wraps a native radio element in markup required for styling purposes.
+ *
+ * ## Directives
+ * * {@link rxRadio.directive:rxRadio rxRadio}
+ */
+angular.module('encore.ui.rxRadio', []);
+
+angular.module('encore.ui.rxRadio')
+/**
+ * @name rxRadio.directive:rxRadio
+ * @ngdoc directive
+ * @restrict A
+ * @scope
+ * @description
+ * rxRadio is an attribute directive that wraps a native radio element in markup required for styling purposes.
+ * To use the directive, you can replace `type="radio"` with `rx-radio`. The directive is smart enough to set
+ * the correct input type.
+ *
+ * # Styling
+ * Directive results in an inline-block element.
+ * You can style the output against decendents of the **`.rxRadio`** CSS class.
+ *
+ * # Show/Hide
+ * If you wish to show/hide your `rxRadio` element (and its label), we recommend placing the element (and its label)
+ * inside of a `<div>` or `<span>` wrapper, and performing the show/hide logic on the wrapper.
+ * <pre>
+ * <span ng-show="isShown">
+ *   <input rx-radio id="radDemo" ng-model="radDemo" />
+ *   <label for="radDemo">Label for Demo Radio</label>
+ * </span>
+ * </pre>
+ *
+ * It is highly recommended that you use `ng-show` and `ng-hide` for display logic.
+ * Because of the way that `ng-if` and `ng-switch` directives behave with scope, they may
+ * introduce unnecessary complexity in your code.
+ *
+ * @example
+ * <pre>
+ * <input rx-radio id="radDemo" ng-model="radDemo" />
+ * <label for="radDemo">Label for Demo Radio</label>
+ * </pre>
+ *
+ * @param {Boolean=} [ng-disabled=false] Determines if control is disabled.
+ */
+.directive('rxRadio', function () {
+    return {
+        restrict: 'A',
+        scope: {
+            ngDisabled: '=?'
+        },
+        compile: function (tElement, tAttrs) {
+            // automatically set input type
+            tElement.attr('type', 'radio');
+            tAttrs.type = 'radio';
+
+            return function (scope, element, attrs) {
+                var disabledClass = 'rx-disabled';
+                var wrapper = '<div class="rxRadio"></div>';
+                var fakeRadio = '<div class="fake-radio">' +
+                        '<div class="tick"></div>' +
+                    '</div>';
+
+                element.wrap(wrapper);
+                element.after(fakeRadio);
+                // must be defined AFTER the element is wrapped
+                var parent = element.parent();
+
+                // apply/remove disabled attribute so we can
+                // apply a CSS selector to style sibling elements
+                if (attrs.disabled) {
+                    parent.addClass(disabledClass);
+                }
+                if (_.has(attrs, 'ngDisabled')) {
+                    scope.$watch('ngDisabled', function (newVal) {
+                        if (newVal === true) {
+                            parent.addClass(disabledClass);
+                        } else {
+                            parent.removeClass(disabledClass);
+                        }
+                    });
+                }
+
+                var removeParent = function () {
+                    parent.remove();
+                };
+
+                // remove stylistic markup when element is destroyed
+                element.on('$destroy', function () {
+                    scope.$evalAsync(removeParent);
+                });
+            };
+        }//compile
+    };
+});
+
+/**
+ * @ngdoc overview
+ * @name rxForm
+ * @description
+ * # rxForm Component
+ *
+ * The rxForm component contains a set of directives used to create forms throughout Encore.  These directives provide
+ * a common HTML layout and style for all form elements, which helps ensure form accessibility and makes creating new
+ *  forms easier.
+ *
+ * ## Directives Are Hierarchical
+ *
+ * To provide a standard layout of form fields (and so CSS rules can apply that layout), most of the new directives
+ *  must be nested in a specific hierarchy.
+ *  If you do not nest these elements properly, Angular will throw an error (this is by design). So, rule of thumb,
+ *  aim for `0` console errors.
+ *
+ * These directives must be nested in the following hierarchy (*the ranges (e.g., 0..1) below denote how many items can
+ *  be nested within its parent*):
+ *
+ * * {@link rxForm.directive:rxForm rxForm}
+ *   * {@link rxForm.directive:rxFormSection rxFormSection} (0..N)
+ *      * {@link rxSelectFilter.directive:rxSelectFilter rxSelectFilter} (0..N)
+ *      * {@link rxForm.directive:rxField rxField} (0..N)
+ *        * {@link rxForm.directive:rxFieldName rxFieldName} (0..1)
+ *        * {@link rxForm.directive:rxFieldContent rxFieldContent} (0..1)
+ *          * {@link rxForm.directive:rxInput rxInput} (0..N)
+ *            * {@link rxForm.directive:rxPrefix rxPrefix} (0..1)
+ *            * {@link rxForm.directive:rxInfix rxInfix} (0..1)
+ *            * {@link rxForm.directive:rxSuffix rxSuffix} (0..1)
+ *
+ * ## Free-Range Directives
+ * These directives are not limited to their placement and can be used anywhere:
+ *
+ * * {@link rxForm.directive:rxHelpText rxHelpText}
+ *   * Designed to style form control help text.
+ * * {@link rxForm.directive:rxInlineError rxInlineError}
+ *   * Designed to style form control error messages.
+ *
+ * ## Compatible Modules
+ * These modules work well with rxForm.
+ *
+ * * {@link elements.directive:rxButton rxButton}
+ * * {@link rxCharacterCount}
+ * * {@link elements.directive:rxCheckbox rxCheckbox}
+ * * {@link rxMultiSelect}
+ * * {@link rxOptionTable}
+ * * {@link rxRadio}
+ * * {@link rxSearchBox}
+ * * {@link rxSelect}
+ * * {@link rxToggleSwitch}
+ * * {@link typeahead}
+ *
+ * # Layout
+ *
+ * ## Stacked Field Arrangement
+ * By default, `rx-form-section` will arrange its children inline, in a row.  To obtain a stacked, columnar layout
+ * for a particular section, place the `stacked` attribute on the `rx-form-section` element.  This will arrange the
+ * `rx-field`, `rx-select-filter`, and `div` children elements in a columnar fashion.  This can be used in conjunction
+ * with sections taking the full width of the form.
+ *
+ *  *See "Advanced Inputs" in the {@link /encore-ui/#/components/rxForm demo} for an example.*
+ *
+ * ## Responsive
+ * `rx-field` and `div` elements that are immediate children of `rx-form-section` will grow from 250px to full width of
+ * the section.  As such, you will see that these elements will wrap in the section if there's not enough width to
+ * accomodate more than one child.
+ *
+ * *You can see this in the {@link /encore-ui/#/components/rxForm demo} if you resize the width of your browser.*
+ *
+ * # Validation
+ *
+ * ## Required Fields
+ * When displaying a field that should be required, please make use of the `ng-required` attribute for rxFieldName.
+ * When the value evaluates to true, an asterisk will display to the left of the field name.  You can see an example
+ * of this with the "Required Textarea" field name in the {@link /encore-ui/#/components/rxForm demo}.
+ *
+ * See {@link rxForm.directive:rxFieldName rxFieldName}
+ * API Documentation for more information.
+ *
+ * ## Custom Validators
+ *
+ * Angular provides its own validator when you use `type="email"`, and you can use `<rx-inline-error>` to turn email
+ * validation errors into a styled message.  You can also use this element if you define a custom validator.
+ *
+ * ### Foocheck validator
+ * The example shown in the "Email Address" example, uses a custom `foocheck` validator. Note that it is enabled by
+ * placing the `foocheck` attribute in the `<input>` element, and using it with
+ * `ng-show="demoForm.userEmail.$error.foocheck"`.  Check out the Javascript tab in
+ * the {@link /encore-ui/#/components/rxForm demo} to see how this validator is implemented.
+ *
+ * There are plenty of examples online showing the same thing.
+ *
+ * # Migrating Old Code
+ *
+ * ## Deprecated Directives
+ * **The following directives have been deprecated and *will be removed* in a future release of the EncoreUI
+ * framework.** They are still functional, but **WILL display a warning in the javascript console** to let you know
+ * you should upgrade your code.
+ *
+ * ### **rxFormItem**
+ * See "Before & After" below
+ *
+ * ### **rxFormFieldset**
+ * Closest equivalent is to use `rxFormSection`. Your individual project requirements will vary, but the `legend`
+ * attribute can be replaced with a heading variant where applicable.
+ *
+ * * If your legend pertains to at least one row, place a heading variant before the desired `rx-form-section`
+ * element.
+ * * If your legend pertains to controls in a single column, place a heading variant within the `rx-field`
+ * element at the top.
+ *
+ * ## Before &amp; After
+ * The `rxFormItem` has been found to be incredibly brittle and prone to breakage. The new markup may look a little
+ * wordy, but it is designed to provide enough flexibility for advanced field inputs. To be explicit, the new directives
+ * were designed based on feedback around:
+ *
+ * * applying custom HTML markup for `label`, `description`, `prefix`, and `suffix` properties
+ * * standardizing form layout functionality
+ * * eliminating unnecessary CSS class definitions
+ *
+ * The following are some examples comparing what code looked like using the old directives versus the new directives.
+ *
+ * ### Email Address
+ * #### Before
+ * <pre>
+ * <form name="demoForm">
+ *   <rx-form-item label="Email address" description="Must contain foo.">
+ *     <input name="userEmail" type="email" ng-model="details.email" foocheck />
+ *     <div ng-show="demoForm.userEmail.$error.email" class="inline-error">
+ *         Invalid email
+ *     </div>
+ *     <div ng-show="demoForm.userEmail.$error.foocheck" class="inline-error">
+ *         Your email address must contain 'foo'
+ *     </div>
+ *   </rx-form-item>
+ * </form>
+ * </pre>
+ *
+ * #### After
+ * <pre>
+ * <form name="demoForm" rx-form>
+ *   <rx-form-section>
+ *     <rx-field>
+ *       <rx-field-name>Email address:</rx-field-name>
+ *       <rx-field-content>
+ *         <rx-input>
+ *           <input name="userEmail" type="email" ng-model="details.email" foocheck />
+ *         </rx-input>
+ *         <rx-help-text>Must contain foo.</rx-help-text>
+ *         <rx-inline-error ng-show="demoForm.userEmail.$error.email">
+ *             Invalid email
+ *         </rx-inline-error>
+ *         <rx-inline-error ng-show="demoForm.userEmail.$error.foocheck">
+ *             Your email address must contain 'foo'
+ *         </rx-inline-error>
+ *       </rx-field-content>
+ *     </rx-field>
+ *   </rx-form-section>
+ * </form>
+ * </pre>
+ *
+ * ### Monthly Cost
+ * #### Before
+ * <pre>
+ * <form name="demoForm">
+ *   <rx-form-item label="Monthly Cost" prefix="$" suffix="million">
+ *     <input type="number" ng-model="volume.cost" />
+ *   </rx-form-item>
+ * </form>
+ * </pre>
+ * #### After
+ * <pre>
+ * <form name="demoForm" rx-form>
+ *   <rx-form-section>
+ *     <rx-field>
+ *       <rx-field-name>Monthly Cost:</rx-field-name>
+ *       <rx-field-content>
+ *         <rx-input>
+ *           <rx-prefix>$</rx-prefix>
+ *           <input type="number" ng-model="volume.cost" />
+ *           <rx-suffix>million</rx-suffix>
+ *         </rx-input>
+ *       </rx-field-content>
+ *     </rx-field>
+ *   </rx-form-section>
+ * </form>
+ * </pre>
+ *
+ * ## Hierarchical Directives
+ * * {@link rxForm.directive:rxForm rxForm}
+ * * {@link rxForm.directive:rxFormSection rxFormSection}
+ * * {@link rxForm.directive:rxField rxField}
+ * * {@link rxForm.directive:rxFieldName rxFieldName}
+ * * {@link rxForm.directive:rxFieldContent rxFieldContent}
+ * * {@link rxForm.directive:rxInput rxInput}
+ * * {@link rxForm.directive:rxPrefix rxPrefix}
+ * * {@link rxForm.directive:rxSuffix rxSuffix}
+ *
+ * ## Free-Range Directives
+ * * {@link rxForm.directive:rxHelpText rxHelpText}
+ * * {@link rxForm.directive:rxInlineError rxInlineError}
+ *
+ * ### Related Directives
+ * * {@link elements.directive:rxButton rxButton}
+ * * {@link rxCharacterCount.directive:rxCharacterCount rxCharacterCount}
+ * * {@link elements.directive:rxCheckbox rxCheckbox}
+ * * {@link rxOptionTable.directive:rxOptionTable rxOptionTable}
+ * * {@link rxRadio.directive:rxRadio rxRadio}
+ * * {@link rxSelect.directive:rxSelect rxSelect}
+ * * {@link rxToggleSwitch.directive:rxToggleSwitch rxToggleSwitch}
+ *
+ */
+angular.module('encore.ui.rxForm', [
+    'ngSanitize',
+    'encore.ui.utilities'
+]);
+
+angular.module('encore.ui.rxForm')
+/**
+ * @name rxForm.directive:rxSuffix
+ * @ngdoc directive
+ * @restrict E
+ * @description
+ * Structural element directive used to wrap content to be placed
+ * inline with a form control element.
+ *
+ * * Best placed after a form control element.
+ *
+ * <dl>
+ *   <dt>Display:</dt>
+ *   <dd>**inline block** *(only as wide as necessary for content)*</dd>
+ *
+ *   <dt>Parent:</dt>
+ *   <dd>{@link rxForm.directive:rxInput rxInput}</dd>
+ *
+ *   <dt>Siblings:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link rxForm.directive:rxPrefix rxPrefix}</li>
+ *       <li>{@link rxForm.directive:rxInfix rxInfix}</li>
+ *       <li>Any HTML Element</li>
+ *     </ul>
+ *   </dd>
+ *
+ *   <dt>Children:</dt>
+ *   <dd>Any HTML Element</dd>
+ * </dl>
+ *
+ * @example
+ * <pre>
+ * ...
+ * <form rx-form>
+ *   <rx-form-section>
+ *     <rx-field>
+ *       <rx-field-name>Salary:</rx-field-name>
+ *       <rx-field-content>
+ *         <rx-input>
+ *           <rx-prefix>$</rx-prefix>
+ *           <input type="number" />
+ *           <rx-suffix>Million</rx-suffix>
+ *         </rx-input>
+ *       </rx-field-content>
+ *     </rx-field>
+ *   </rx-form-section>
+ * </form>
+ * ...
+ * </pre>
+ */
+.directive('rxSuffix', function (rxNestedElement) {
+    return rxNestedElement({
+        parent: 'rxInput'
+    });
+});
+
+angular.module('encore.ui.rxForm')
+/**
+ * @name rxForm.directive:rxPrefix
+ * @ngdoc directive
+ * @restrict E
+ * @description
+ * Structural element directive used to wrap content to be placed
+ * inline with a form control element.
+ *
+ * * Best placed before a form control element.
+ *
+ * <dl>
+ *   <dt>Display:</dt>
+ *   <dd>**inline block** *(only as wide as necessary for content)*</dd>
+ *
+ *   <dt>Parent:</dt>
+ *   <dd>{@link rxForm.directive:rxInput rxInput}</dd>
+ *
+ *   <dt>Siblings:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link rxForm.directive:rxInfix rxInfix}</li>
+ *       <li>{@link rxForm.directive:rxSuffix rxSuffix}</li>
+ *       <li>Any HTML Element</li>
+ *     </ul>
+ *   </dd>
+ *
+ *   <dt>Children:</dt>
+ *   <dd>Any HTML Element</dd>
+ * </dl>
+ *
+ * @example
+ * <pre>
+ * ...
+ * <form rx-form>
+ *   <rx-form-section>
+ *     <rx-field>
+ *       <rx-field-name>Salary:</rx-field-name>
+ *       <rx-field-content>
+ *         <rx-input>
+ *           <rx-prefix>$</rx-prefix>
+ *           <input type="number" />
+ *           <rx-suffix>Million</rx-suffix>
+ *         </rx-input>
+ *       </rx-field-content>
+ *     </rx-field>
+ *   </rx-form-section>
+ * </form>
+ * ...
+ * </pre>
+ */
+.directive('rxPrefix', function (rxNestedElement) {
+    return rxNestedElement({
+        parent: 'rxInput'
+    });
+});
+
+angular.module('encore.ui.rxForm')
+/**
+ * @name rxForm.directive:rxInput
+ * @ngdoc directive
+ * @restrict E
+ * @description
+ * Structural element directive used for layout of sub-elements.
+ * Place your HTML control elements within this directive.
+ *
+ * <dl>
+ *   <dt>Display:</dt>
+ *   <dd>**block** *(full width of parent)*</dd>
+ *
+ *   <dt>Parent:</dt>
+ *   <dd>{@link rxForm.directive:rxFieldContent rxFieldContent}</dd>
+ *
+ *   <dt>Siblings:</dt>
+ *   <dd>Any HTML Element</dd>
+ *
+ *   <dt>Children:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link rxForm.directive:rxPrefix rxPrefix}</li>
+ *       <li>{@link rxForm.directive:rxSuffix rxSuffix}</li>
+ *       <li>{@link elements.directive:rxCheckbox rxCheckbox}</li>
+ *       <li>{@link rxRadio.directive:rxRadio rxRadio}</li>
+ *       <li>{@link rxSelect.directive:rxSelect rxSelect}</li>
+ *       <li>{@link rxToggleSwitch.directive:rxToggleSwitch rxToggleSwitch}</li>
+ *       <li>{@link rxOptionTable.directive:rxOptionTable rxOptionTable}</li>
+ *       <li>Any HTML Element</li>
+ *     </ul>
+ *   </dd>
+ * </dl>
+ *
+ * @example
+ * <pre>
+ * ...
+ * <form rx-form>
+ *   <rx-form-section>
+ *     <rx-field>
+ *       <rx-field-name>Salary:</rx-field-name>
+ *       <rx-field-content>
+ *         <rx-input>
+ *           <input type="number" />
+ *         </rx-input>
+ *       </rx-field-content>
+ *     </rx-field>
+ *   </rx-form-section>
+ * </form>
+ * ...
+ * </pre>
+ */
+.directive('rxInput', function (rxNestedElement) {
+    return rxNestedElement({
+        parent: 'rxFieldContent'
+    });
+});
+
+angular.module('encore.ui.rxForm')
+/**
+ * @name rxForm.directive:rxInlineError
+ * @ngdoc directive
+ * @restrict E
+ * @description
+ * Stylistic element directive used to wrap an error message.
+ *
+ * * **block** element *(full width of parent)*
+ * * Best used as a sibling after {@link rxForm.directive:rxInput rxInput},
+ *   and {@link rxForm.directive:rxHelpText rxHelpText} elements.
+ *
+ * @example
+ * <pre>
+ * ...
+ * <form rx-form name="demoForm">
+ *   <rx-form-section>
+ *     <rx-field>
+ *       <rx-field-name>Salary:</rx-field-name>
+ *       <rx-field-content>
+ *         <rx-input>
+ *           <rx-prefix>$</rx-prefix>
+ *           <input type="number" name="salary" min="1000000" ng-model="salary" />
+ *           <rx-suffix>Million</rx-suffix>
+ *         </rx-input>
+ *         <rx-inline-error ng-show="demoForm.salary.$errors.min">
+ *           Salary must be above $1,000,000
+ *         </rx-inline-error>
+ *       </rx-field-content>
+ *     </rx-field>
+ *   </rx-form-section>
+ * </form>
+ * ...
+ * </pre>
+ */
+.directive('rxInlineError', function () {
+    return {
+        restrict: 'E'
+    };
+});
+
+angular.module('encore.ui.rxForm')
+/**
+ * @name rxForm.directive:rxInfix
+ * @ngdoc directive
+ * @restrict E
+ * @description
+ * Structural element directive used to wrap content to be placed
+ * inline with a form control element.
+ *
+ * <dl>
+ *   <dt>Display:</dt>
+ *   <dd>**inline block** *(only as wide as necessary for content)*</dd>
+ *
+ *   <dt>Parent:</dt>
+ *   <dd>{@link rxForm.directive:rxInput rxInput}</dd>
+ *
+ *   <dt>Siblings:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link rxForm.directive:rxPrefix rxPrefix}</li>
+ *       <li>{@link rxForm.directive:rxSuffix rxSuffix}</li>
+ *       <li>Any HTML Element</li>
+ *     </ul>
+ *   </dd>
+ *
+ *   <dt>Children:</dt>
+ *   <dd>Any HTML Element</dd>
+ * </dl>
+ *
+ * @example
+ * <pre>
+ * ...
+ * <form rx-form>
+ *   <rx-form-section>
+ *     <rx-field>
+ *       <rx-field-name>Time of Day:</rx-field-name>
+ *       <rx-field-content>
+ *         <rx-input>
+ *           <input type="number" name="hours" />
+ *           <rx-infix>:</rx-infix>
+ *           <input type="number" name="minutes" />
+ *         </rx-input>
+ *       </rx-field-content>
+ *     </rx-field>
+ *   </rx-form-section>
+ * </form>
+ * ...
+ * </pre>
+ */
+.directive('rxInfix', function (rxNestedElement) {
+    return rxNestedElement({
+        parent: 'rxInput'
+    });
+});
+
+angular.module('encore.ui.rxForm')
+/**
+ * @name rxForm.directive:rxHelpText
+ * @ngdoc directive
+ * @restrict E
+ * @description
+ * Stylistic element directive used to wrap form input help text.
+ *
+ * * **block** element *(full width of parent)*
+ * * Best used as a sibling after {@link rxForm.directive:rxInput rxInput},
+ *   but before {@link rxForm.directive:rxInlineError rxInlineError} elements.
+ *
+ * @example
+ * <pre>
+ * ...
+ * <form rx-form name="demoForm">
+ *   <rx-form-section>
+ *     <rx-field>
+ *       <rx-field-name>Salary:</rx-field-name>
+ *       <rx-field-content>
+ *         <rx-input>
+ *           <rx-prefix>$</rx-prefix>
+ *           <input type="number" name="salary" />
+ *           <rx-suffix>Million</rx-suffix>
+ *         </rx-input>
+ *         <rx-help-text>Must be greater than $1,000,000</rx-help-text>
+ *         <rx-inline-error ng-show="demoForm.salary.$errors.minimum">
+ *           Salary must be above $1,000,000
+ *         </rx-inline-error>
+ *       </rx-field-content>
+ *     </rx-field>
+ *   </rx-form-section>
+ * </form>
+ * ...
+ * </pre>
+ */
+.directive('rxHelpText', function () {
+    return {
+        restrict: 'E'
+    };
+});
+
+angular.module('encore.ui.rxForm')
+/**
+ * @name rxForm.directive:rxFormSection
+ * @ngdoc directive
+ * @restrict E
+ * @description
+ * Structural element directive used for layout of sub-elements.
+ *
+ * By default, all `rxField`, `rxSelectFilter`, and `<div>` elements will display inline (horizontally).
+ * If you wish to display these elements in a stacked manner, you may
+ * place the `stacked` attribute on `rx-form-section`.
+ *
+ * <dl>
+ *   <dt>Display:</dt>
+ *   <dd>**block** *(full width of parent)*</dd>
+ *
+ *   <dt>Parent:</dt>
+ *   <dd>{@link rxForm.directive:rxForm rxForm}</dd>
+ *
+ *   <dt>Siblings:</dt>
+ *   <dd>Any HTML Element</dd>
+ *
+ *   <dt>Children:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link rxForm.directive:rxField rxField}</li>
+ *       <li>{@link rxSelectFilter.directive:rxSelectFilter rxSelectFilter}</li>
+ *       <li>HTML DIV Element</li>
+ *     </ul>
+ *   </dd>
+ * </dl>
+ *
+ * @example
+ * <pre>
+ * ...
+ * <form rx-form>
+ *   <rx-form-section>
+ *     <rx-field>...</rx-field>
+ *     <rx-select-filter>...</rx-select-filter>
+ *     <div>...</div>
+ *   </rx-form-section>
+ * </form>
+ * ...
+ * </pre>
+ *
+ * @param {*=} stacked
+ * If present, `rxField` children will stack vertically rather than
+ * display horizontally.
+ */
+.directive('rxFormSection', function (rxNestedElement) {
+    return rxNestedElement({
+        parent: 'rxForm'
+    });
+});
+
+angular.module('encore.ui.rxForm')
+/**
+ * @name rxForm.directive:rxForm
+ * @ngdoc directive
+ * @restrict A
+ * @description
+ * The rxForm directive is an attribute directive meant to be used for
+ * hierarchical validation of form-related elements. This directive may
+ * be placed on ANY DOM element, not just `<form>`.
+ *
+ * <dl>
+ *   <dt>Display:</dt>
+ *   <dd>**block** *(full width of parent)*</dd>
+ *
+ *   <dt>Parent:</dt>
+ *   <dd>Any HTML Element</dd>
+ *
+ *   <dt>Siblings:</dt>
+ *   <dd>Any HTML Element</dd>
+ *
+ *   <dt>Children:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link rxForm.directive:rxFormSection rxFormSection}</li>
+ *       <li>Any HTML Element</li>
+ *     </ul>
+ *   </dd>
+ * </dl>
+ *
+ * @example
+ * <pre>
+ * ...
+ * <form rx-form><!-- you can use a DIV, if desired -->
+ *   <rx-form-section>
+ *     ...
+ *   </rx-form-section>
+ * </form>
+ * ...
+ * </pre>
+ */
+.directive('rxForm', function (rxNestedElement) {
+    return rxNestedElement({
+        restrict: 'A'
+    });
+});
+
+angular.module('encore.ui.rxForm')
+/**
+ * @name rxForm.directive:rxFieldName
+ * @ngdoc directive
+ * @restrict E
+ * @scope
+ * @description
+ * Stylistic element directive that provides a standardized UI for
+ * form field names.
+ *
+ * <dl>
+ *   <dt>Display:</dt>
+ *   <dd>**block** *(full width of parent)*</dd>
+ *
+ *   <dt>Parent:</dt>
+ *   <dd>{@link rxForm.directive:rxField rxField}</dd>
+ *
+ *   <dt>Siblings:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link rxForm.directive:rxFieldContent rxFieldContent}</li>
+ *       <li>Any HTML Element</li>
+ *     </ul>
+ *   </dd>
+ *
+ *   <dt>Children:</dt>
+ *   <dd>Any HTML Element</dd>
+ * </dl>
+ *
+ * @example
+ * <pre>
+ * ...
+ * <form rx-form>
+ *   <rx-form-section>
+ *     <rx-field>
+ *       <rx-field-name>Salary</rx-field-name>
+ *       <rx-field-content>...</rx-field-content>
+ *     </rx-field>
+ *   </rx-form-section>
+ * </form>
+ * ...
+ * </pre>
+ *
+ * @param {Boolean=} [ng-required=false]
+ * Is this field required? This will add/remove the required symbol to the left of the name.
+ */
+.directive('rxFieldName', function (rxNestedElement) {
+    return rxNestedElement({
+        parent: 'rxField',
+        transclude: true,
+        scope: {
+            ngRequired: '=?'
+        },
+        templateUrl: 'templates/rxFieldName.html'
+    });
+});
+
+angular.module('encore.ui.rxForm')
+/**
+ * @name rxForm.directive:rxFieldContent
+ * @ngdoc directive
+ * @restrict E
+ * @description
+ * Structural element directive used for layout of sub-elements.
+ * This element is used to wrap the actual content markup for your
+ * controls, labels, help text, and error messages.
+ *
+ * <dl>
+ *   <dt>Display:</dt>
+ *   <dd>**block** *(full width of parent)*</dd>
+ *
+ *   <dt>Parent:</dt>
+ *   <dd>{@link rxForm.directive:rxField rxField}</dd>
+ *
+ *   <dt>Siblings:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link rxForm.directive:rxFieldName rxFieldName}</li>
+ *       <li>Any HTML Element</li>
+ *     </ul>
+ *   </dd>
+ *
+ *   <dt>Children:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link rxForm.directive:rxInput rxInput}</li>
+ *       <li>Any HTML Element</li>
+ *     </ul>
+ *   </dd>
+ * </dl>
+ *
+ * @example
+ * <pre>
+ * ...
+ * <form rx-form>
+ *   <rx-form-section>
+ *     <rx-field>
+ *       <rx-field-name>
+ *          <i class="fa fa-exclamation"></i>
+ *          Important Field Name
+ *       </rx-field-name>
+ *       <rx-field-content>
+ *          <rx-input>...</rx-input>
+ *       </rx-field-content>
+ *     </rx-field>
+ *   </rx-form-section>
+ * </form>
+ * ...
+ * </pre>
+ */
+.directive('rxFieldContent', function (rxNestedElement) {
+    return rxNestedElement({
+        parent: 'rxField'
+    });
+});
+
+angular.module('encore.ui.rxForm')
+/**
+ * @name rxForm.directive:rxField
+ * @ngdoc directive
+ * @restrict E
+ * @description
+ * Structural element directive used for layout of sub-elements.
+ *
+ * <dl>
+ *   <dt>Display:</dt>
+ *   <dd>**block**
+ *     <ul>
+ *       <li>default: *shares width equally with sibling `rxField` and `div` elements*</li>
+ *       <li>stacked: *max-width: 400px*</li>
+ *     </ul>
+ *   </dd>
+ *
+ *   <dt>Parent:</dt>
+ *   <dd>{@link rxForm.directive:rxFormSection rxFormSection}</dd>
+ *
+ *   <dt>Siblings:</dt>
+ *   <dd>Any HTML Element</dd>
+ *
+ *   <dt>Children:</dt>
+ *   <dd>
+ *     <ul>
+ *       <li>{@link rxForm.directive:rxFieldName rxFieldName}</li>
+ *       <li>{@link rxForm.directive:rxFieldContent rxFieldContent}</li>
+ *       <li>Any HTML Element</li>
+ *     </ul>
+ *   </dd>
+ * </dl>
+ *
+ * @example
+ * <pre>
+ * ...
+ * <form rx-form>
+ *   <rx-form-section>
+ *     <rx-field>
+ *       <rx-field-name>...</rx-field-name>
+ *       <rx-field-content>...</rx-field-content>
+ *     </rx-field>
+ *   </rx-form-section>
+ * </form>
+ * ...
+ * </pre>
+ */
+.directive('rxField', function (rxNestedElement) {
+    return rxNestedElement({
+        parent: 'rxFormSection'
+    });
+});
+
+/**
+ * @ngdoc overview
  * @name rxCollapse
  * @description
  * # rxCollapse Component
@@ -844,6 +2262,21 @@ angular.module('encore.bridge').run(['$templateCache', function($templateCache) 
 }]);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
+  $templateCache.put('templates/rxFieldName.html',
+    '<span class="wrapper"><span ng-show="ngRequired" class="required-symbol">*</span> <span ng-transclude class="rx-field-name-content"></span></span>');
+}]);
+
+angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
+  $templateCache.put('templates/rxFormItem.html',
+    '<div class="form-item" ng-class="{\'text-area-label\': isTextArea}"><label class="field-label">{{label}}:</label><div class="field-content"><span class="field-prefix" ng-if="prefix">{{prefix}}</span><!-- Form input will be added here --> <span class="field-input-wrapper" ng-transclude></span><!-- The directve will also put \n' +
+    '            \n' +
+    '            <span class="field-suffix">{{ suffix }}</span> \n' +
+    '        \n' +
+    '        in after the `input` that we transclude, but before any other content we transclude\n' +
+    '        --><div ng-if="description" class="field-description" ng-bind-html="description"></div></div></div>');
+}]);
+
+angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxSortableColumn.html',
     '<div class="panel-header" ng-class="{ \'rs-table-sort-asc\': !reverse && predicate === sortProperty, \'rs-table-sort-desc\': reverse && predicate === sortProperty}" ng-click="sortMethod({property:sortProperty})"><span class="visually-hidden">Sort by&nbsp;</span> <span class="display-value" ng-transclude></span> <span class="visually-hidden">Sorted {{reverse ? \'ascending\' : \'descending\'}}</span> <span ng-if="predicate === sortProperty" class="rs-table-sort-indicator"></span></div>');
 }]);
@@ -856,6 +2289,16 @@ angular.module('encore.bridge').run(['$templateCache', function($templateCache) 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxActionMenu.html',
     '<div class="rs-dropdown rs-{{type}}-dropdown" ng-class="{\'rs-nav-item\': type}"><a ng-if="text" class="rs-nav-link rs-dropdown-toggle" ng-click="toggle()">{{text}} <i class="rs-caret"></i> </a><button ng-if="!text" class="rs-cog" ng-click="toggle()"></button><div ng-class="{\'visible\': displayed }" ng-click="modalToggle()" ng-transclude></div></div>');
+}]);
+
+angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
+  $templateCache.put('templates/rxDatePicker.html',
+    '<div class="rxDatePicker wrapper"><div class="control" ng-click="toggleCalendar()"><time class="displayValue" datetime="{{selected}}">{{displayValue}} </time><i class="icon fa fa-fw fa-calendar"></i></div><div class="backdrop" ng-click="closeCalendar()" ng-if="calendarVisible"></div><div class="popup" ng-show="calendarVisible"><nav><span class="arrow prev fa fa-lg fa-angle-double-left" ng-click="navigate(\'prevMonth\')"></span> <span class="month-wrapper"><select rx-select class="month" ng-model="currentMonth" ng-selected="{{month = currentMonth}}"><option value="01">Jan</option><option value="02">Feb</option><option value="03">Mar</option><option value="04">Apr</option><option value="05">May</option><option value="06">Jun</option><option value="07">Jul</option><option value="08">Aug</option><option value="09">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option></select></span><span class="year-wrapper"><select rx-select class="year" ng-model="currentYear" ng-selected="{{year = currentYear}}"><option ng-repeat="year in calendarYears">{{year}}</option></select></span><span class="arrow next fa fa-lg fa-angle-double-right" ng-click="navigate(\'nextMonth\')"></span></nav><div class="calendar"><header><h6>S</h6><h6>M</h6><h6>T</h6><h6>W</h6><h6>T</h6><h6>F</h6><h6>S</h6></header><div class="day {{ isMonth(day) ? \'inMonth\' : \'outOfMonth\' }}" data-date="{{day.format(\'YYYY-MM-DD\')}}" ng-class="{ today: isToday(day), selected: isSelected(day) }" ng-repeat="day in calendarDays" ng-switch="isMonth(day)"><span class="circle" ng-switch-when="true" ng-click="selectDate(day)">{{ day.date() }} </span><span ng-switch-when="false">{{ day.date() }}</span></div></div></div></div>');
+}]);
+
+angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
+  $templateCache.put('templates/rxTimePicker.html',
+    '<div class="rxTimePicker wrapper"><div class="control" ng-click="togglePopup()"><input type="text" data-time="{{modelValue}}" class="displayValue" ng-model="displayValue"><div class="overlay"><i class="icon fa fa-fw fa-clock-o"></i></div></div><div class="popup" ng-show="isPickerVisible"><form rx-form name="timePickerForm"><rx-form-section><rx-field><rx-field-content><rx-input><input type="text" name="hour" class="hour" maxlength="2" autocomplete="off" ng-required="true" ng-pattern="/^(1[012]|0?[1-9])$/" ng-model="hour"><rx-infix>:</rx-infix><input type="text" name="minutes" class="minutes" maxlength="2" autocomplete="off" ng-required="true" ng-pattern="/^[0-5][0-9]$/" ng-model="minutes"><rx-suffix><select rx-select name="period" class="period" ng-model="period"><option value="AM">AM</option><option value="PM">PM</option></select></rx-suffix><rx-suffix class="offsetWrapper"><select rx-select name="utcOffset" class="utcOffset" ng-model="offset"><option ng-repeat="utcOffset in availableUtcOffsets" ng-selected="{{utcOffset === offset}}">{{utcOffset}}</option></select></rx-suffix></rx-input><rx-inline-error ng-if="timePickerForm.hour.$dirty && !timePickerForm.hour.$valid">Invalid Hour</rx-inline-error><rx-inline-error ng-if="timePickerForm.minutes.$dirty && !timePickerForm.minutes.$valid">Invalid Minutes</rx-inline-error></rx-field-content></rx-field></rx-form-section><rx-form-section class="actions"><div><rx-button classes="done" default-msg="Done" disable="!timePickerForm.$valid" ng-click="submitPopup()"></rx-button>&nbsp;<rx-button classes="cancel" default-msg="Cancel" ng-click="closePopup()"></rx-button></div></rx-form-section></form></div></div>');
 }]);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
