@@ -1,0 +1,130 @@
+.rx-app {
+  min-height: 100%;
+  margin: 0 auto -35px;
+
+  .rx-eyebrow {
+    min-height: 40px;
+    background: @black;
+    padding: 0 60px;
+
+    .rackspace-logo-bw {
+      display: block;
+      margin: -8px 0 0 0;
+      padding: 0;
+      width: 137px;
+      height: 30px;
+      background-image: url('https://19c5b85ac8f15b5aa0f0-992405e4638ce3c6772d7b96e627ce61.ssl.cf1.rackcdn.com/assets/dist/7477ddf584f65ba6b8ea56d44aee5188231b0958/img.png');
+    }
+
+    .rx-nav-item:not(:first-child) {
+      margin-left: 20px;
+    }
+
+    .account-menu .action-list {
+      width: 200px;
+      left: -40px;
+    }
+  }
+
+  .rx-push {
+    height: 40px;
+  }
+}
+
+.rx-nav-item {
+  & > a, .rx-action-menu-toggle {
+    color: @gray-500;
+  }
+}
+
+.rx-nav {
+  &.pull-right {
+    float: right;
+  }
+
+  .rx-nav-item {
+    display: inline-block;
+    vertical-align: top;
+    padding: 12px 0;
+
+    &:not(:first-child) {
+      padding-left: 10px;
+    }
+  }
+}
+
+.rx-nav-primary {
+  padding: 15px;
+  background: @gray-975;
+
+  .rx-nav-item {
+    padding: 8px 15px 7px;
+    color: @gray-400;
+    font-size: 18px;
+
+    & > a, .rx-action-menu-toggle {
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+
+    &.active {
+      color: @white;
+    }
+  }
+}
+
+.rx-eyebrow, .rx-nav-primary {
+  .action-list {
+    background: @gray-950;
+    color: @gray-500;
+    border-color: @gray-950;
+    padding: 8px 0;
+
+    .actions-area > li {
+      padding: 0;
+
+      & > * {
+        display: block;
+        padding: 2px 15px;
+      }
+
+      & > a {
+        color: @gray-500;
+
+        &:hover {
+          text-decoration: none;
+          color: @white;
+          background: @gray-900;
+        }
+      }
+
+      .caption {
+        display: block;
+        color: @gray-600;
+        font-size: 12px;
+      }
+    }
+
+    .divider {
+      margin: 7px 0 8px;
+      height: 1px;
+      background: @black;
+      border-bottom: 1px solid @gray-900;
+    }
+  }
+}
+
+.rx-footer {
+  height: 40px;
+  padding: 0 60px;
+  background: @gray-975;
+  color: @gray-500;
+
+  .rx-nav-item:not(:first-child) {
+    padding-left: 10px;
+    &:before {
+      padding: 0 10px 0 0;
+      content: '\2022';
+    }
+  }
+}

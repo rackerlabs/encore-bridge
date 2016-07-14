@@ -36,6 +36,9 @@ angular.module('demoApp', [
     templateUrl: 'rxActionMenu.html',
     controller: 'rxActionMenuCtrl'
   })
+  .when('/elements/Buttons', {
+    templateUrl: 'Buttons.docs.html'
+  })
   .when('/elements/Forms', {
     templateUrl: 'forms.docs.html'
   })
@@ -54,7 +57,7 @@ angular.module('demoApp', [
     return _.last(mod.split('.'));
   })
   .value();
-  $rootScope.elements = ['ActionMenu', 'Forms', 'Metadata'];
+  $rootScope.elements = ['ActionMenu', 'Buttons', 'Forms', 'Metadata'];
 
   $rootScope.$on('$routeChangeSuccess', function (event, route) {
     $rootScope.activePrimaryNavItem = route.$$route.originalPath.split('/')[1];
@@ -63,4 +66,14 @@ angular.module('demoApp', [
 // TODO: remove when build system supports demo controller overrides
 .factory('rxNotify', function () {
   return {}
+});
+angular.module('demoApp')
+.directive('alwaysInvalid', function () {
+  return {
+    require: 'ngModel',
+    link: function (scope, el, attrs, ctrl) {
+      ctrl.$setValidity('alwaysInvalid', false);
+      ctrl.$setDirty();
+    }
+  };
 });

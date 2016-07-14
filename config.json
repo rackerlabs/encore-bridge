@@ -2,6 +2,7 @@
   "submodule": "encore-ui/src",
   "modules": {
     "components": [
+      "rxApp",
       "rxCollapse",
       "rxForm",
       "rxPopover",
@@ -11,11 +12,13 @@
     ],
     "elements": [
       "ActionMenu",
+      "Buttons",
       "Forms",
       "Metadata"
     ],
     "utilities": [
       "rxNestedElement",
+      "rxSortEmptyTop",
       "rxSortUtil",
       "rxStatusColumnIcons",
       "rxStatusMappings"

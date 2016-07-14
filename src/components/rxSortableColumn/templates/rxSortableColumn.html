@@ -1,9 +1,0 @@
-<div
-  class="panel-header"
-  ng-class="{ 'rs-table-sort-asc': !reverse && predicate === sortProperty, 'rs-table-sort-desc': reverse && predicate === sortProperty}"
-  ng-click="sortMethod({property:sortProperty})">
-  <span class="visually-hidden">Sort by&nbsp;</span>
-  <span class="display-value" ng-transclude></span>
-  <span class="visually-hidden">Sorted {{reverse ? 'ascending' : 'descending'}}</span>
-  <span ng-if="predicate === sortProperty" class="rs-table-sort-indicator"></span>
-</div>

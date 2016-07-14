@@ -1,11 +1,12 @@
-<div class="rs-dropdown rs-{{type}}-dropdown" ng-class="{'rs-nav-item': type}">
-  <a ng-if="text" class="rs-nav-link rs-dropdown-toggle" ng-click="toggle()">
+<div class="action-menu-container">
+  <a ng-if="text" class="rx-action-menu-toggle" ng-click="toggle()">
     {{text}}
-    <i class="rs-caret"></i>
+    <i class="fa fa-chevron-down"></i>
   </a>
-  <button ng-if="!text" class="rs-cog" ng-click="toggle()"></button>
+  <i ng-if="!text" class="fa fa-cog fa-lg" ng-click="toggle()"></i>
   <div
-    ng-class="{'visible': displayed }"
+    class="action-list"
+    ng-show="displayed"
     ng-click="modalToggle()"
     ng-transclude>
   </div>

@@ -59,9 +59,16 @@ gulp.task('build:scripts', function () {
 });
 
 gulp.task('build:styles', function () {
-  gulp.src('src/**/*.less')
-  .pipe(less())
+  files()
+  .pipe(filter('**/*.less'))
   .pipe(concat('encore-bridge.css'))
+  .pipe(insert.prepend([
+    '@import (reference) "encore-ui/src/styles/vars.less";',
+    '@import (reference) "encore-ui/src/styles/mixins.less";',
+    '@import "encore-ui/src/components/rxApp/common.less";',
+    '@import (reference) "vars.less";'
+  ].join('\n')))
+  .pipe(less({ paths: ['./', './src/styles', './encore-ui/node_modules/normalize.css'] }))
   .pipe(gulp.dest('./demo/'));
 });
 

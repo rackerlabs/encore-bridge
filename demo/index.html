@@ -3,10 +3,11 @@
   <head>
     <title>Encore Bridge</title>
     <link rel="icon" type="image/png" href="images/favicon.png" rx-favicon="{ local: 'images/local-favicon.png' }" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,700,700italic" rel="stylesheet" type="text/css">
 
     <!-- Content inside bower:css is auto-generated via `grunt wiredep` -->
     <!-- bower:css -->
-    <link href="bower_components/canon/dist/canon.min.css" rel="stylesheet" />
+    <link href="bower_components/font-awesome/css/font-awesome.css" rel="stylesheet" />
     <!-- endbower -->
 
     <link href="encore-bridge.css" rel="stylesheet" />
@@ -30,59 +31,9 @@
     <script src="app.js"></script>
     <script src="demo.js"></script>
   </head>
-  <body class="rs-responsive">
-  <div class="rs-wrapper">
-    <div class="rs-nav-utility">
-      <div class="rs-container">
-        <ul class="rs-nav rs-pull-right">
-          <li class="rs-nav-item"><a class="rs-nav-link" href="#">Account: Username123</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="rs-nav-primary">
-      <div class="rs-container">
-        <div class="rs-nav-brand">
-          <a href="#/"></a>
-        </div>
-        <ul class="rs-nav">
-          <li ng-class="{'active': activePrimaryNavItem === 'components'}">
-            <rx-action-menu text="Components" type="primary">
-              <ul class="rs-dropdown-menu">
-                <li ng-repeat="component in components">
-                  <a class="rs-dropdown-link" ng-href="#/components/{{component}}">{{component}}</a>
-                </li>
-              </ul>
-            </rx-action-menu>
-          </li>
-          <li ng-class="{'active': activePrimaryNavItem === 'elements'}">
-            <rx-action-menu text="Elements" type="primary">
-              <ul class="rs-dropdown-menu">
-                <li ng-repeat="element in elements">
-                  <a class="rs-dropdown-link" ng-href="#/elements/{{element}}">{{element}}</a>
-                </li>
-              </ul>
-            </rx-action-menu>
-        </ul>
-      </div>
-    </div>
-    <div class="rs-body">
-      <div class="rs-container">
-        <div class="rs-main">
-          <div class="rs-content rs-panel">
-            <div class="rs-inner" ng-view></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="rs-push"></div>
-  </div>
-  <div class="rs-nav-footer">
-    <div class="rs-container">
-      <ul class="rs-nav">
-        <li class="rs-nav-item">&copy; Rackspace, US</li>
-        <li class="rs-nav-item"><a class="rs-nav-link" href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a>
-        <li class="rs-nav-item"><a class="rs-nav-link" href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a>
-      </ul>
-    </div>
-  </div>
+  <body>
+    <rx-app>
+      <div ng-view></div>
+    </rx-app>
+  </body>
 </html>

@@ -1,15 +1,9 @@
 {
   "name": "encore-bridge",
   "dependencies": {
-    "encore-ui": "2.0.0",
-    "canon": "~1.8.1"
+    "encore-ui": "2.0.0"
   },
   "overrides": {
-    "canon": {
-      "main": [
-        "dist/canon.min.css"
-      ]
-    },
     "encore-ui": {
       "main": [
         "encore-ui.js"

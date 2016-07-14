@@ -1,0 +1,35 @@
+.rxRadio {
+  .fake-radio {
+    background-color: @app-default-selected-accent-color;
+  }
+
+  input[type="radio"] {
+    &:checked + .fake-radio {
+      background-color: @app-default-selected-accent-color;
+    }
+
+    .disabled() {
+      & + .fake-radio {
+        background-color: @app-disabled-background-color;
+      }
+    }
+
+    &.ng-invalid.ng-dirty {
+      & + .fake-radio {
+        background-color: @app-invalid-input-background-color;
+      }
+
+      // disabled trumps invalid
+      &[disabled] {
+        .disabled();
+      }
+    }
+
+    // disabled trumps invalid
+    &[disabled] {
+      .disabled();
+    }
+  }
+}
+
+
