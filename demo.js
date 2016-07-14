@@ -1,4 +1,141 @@
 angular.module('demoApp')
+.controller('rxAppCtrl', function ($scope, $location, $rootScope, $window, encoreRoutes, rxVisibility, Session) {
+    Session.getUserId = function () {
+        return 'bert3000';
+    };
+
+    $scope.subtitle = 'With a subtitle';
+
+    $scope.changeSubtitle = function () {
+        $scope.subtitle = 'With a new subtitle at ' + Date.now();
+    };
+
+    rxVisibility.addMethod(
+        'isUserDefined',
+        function () {
+            return !_.isEmpty($rootScope.user);
+        }
+    );
+
+    $scope.changeRoutes = function () {
+        var newRoute = {
+            linkText: 'Updated Route',
+            childVisibility: 'true',
+            children: [
+                {
+                    linkText: 'New child route'
+                }
+            ]
+        };
+
+        encoreRoutes.setRouteByKey('accountLvlTools', newRoute);
+    };
+
+    // Fake navigation
+    var customApp = document.getElementById('custom-rxApp');
+    customApp.addEventListener('click', function (ev) {
+        var target = ev.target;
+
+        if (target.className.indexOf('item-link') > -1) {
+            // prevent the default jump to top
+            ev.preventDefault();
+
+            var href = target.getAttribute('href');
+
+            // update angular location (if href has a value)
+            if (!_.isEmpty(href)) {
+                // we need to prevent the window from scrolling (the demo does this)
+                // so we get the current scrollTop position
+                // and set it after the demo page has run '$routeChangeSuccess'
+                var currentScollTop = document.body.scrollTop;
+
+                $location.hash(href);
+
+                $rootScope.$apply();
+
+                $window.scrollTo(0, currentScollTop);
+            }
+        }
+    });
+
+    var searchDirective = [
+        'rx-app-search placeholder="Enter User"',
+        'model="$root.user"',
+        'pattern="/^([0-9a-zA-Z._ -]{2,})$/"'
+    ].join(' ');
+
+    $scope.customMenu = [{
+        title: 'Example Menu',
+        children: [
+            {
+                href: 'Lvl1-1',
+                linkText: '1st Order Item'
+            },
+            {
+                linkText: '1st Order Item (w/o href) w/ Children',
+                childVisibility: [ 'isUserDefined' ],
+                childHeader: '<strong class="current-search">Current User:</strong>' +
+                             '<span class="current-result">{{$root.user}}</span>',
+                directive: searchDirective,
+                children: [
+                    {
+                        href: 'Lvl1-2-Lvl2-1',
+                        linkText: '2nd Order Item w/ Children',
+                        children: [{
+                            href: 'Lvl1-2-Lvl2-1-Lvl3-1',
+                            linkText: '3rd Order Item'
+                        }]
+                    },
+                    {
+                        href: 'Lvl1-2-Lvl2-2',
+                        linkText: '2nd Order Item w/ Children',
+                        children: [
+                            {
+                                href: 'Lvl1-2-Lvl2-2-Lvl3-1',
+                                linkText: '3rd Order Item'
+                            },
+                            {
+                                href: 'Lvl1-2-Lvl2-2-Lvl3-2',
+                                linkText: '3rd Order Item'
+                            },
+                            {
+                                href: 'Lvl1-2-Lvl2-2-Lvl3-3',
+                                linkText: '3rd Order Item'
+                            },
+                            {
+                                href: 'Lvl1-2-Lvl2-2-Lvl3-4',
+                                linkText: '3rd Order Item'
+                            }
+                        ]
+                    },
+                    {
+                        href: 'Lvl1-2-Lvl2-3',
+                        linkText: '2nd Order Item'
+                    }
+                ]
+            },
+            {
+                href: 'Lvl1-3',
+                linkText: '1st Order Item w/ Children',
+                children: [
+                    {
+                        href: 'Lvl1-3-Lvl2-1',
+                        linkText: '2nd Order Item'
+                    }
+                ]
+            }
+        ]
+    }];
+
+    // Load docs homepage ('Overview')
+    // NOTE: Trailing forward slash is not an accident.
+    // This is required to get Firefox to load the iframe.
+    //
+    // The resulting url should have double forward slashes `//`.
+    $scope.embedUrl = $location.absUrl().split('#')[0] + '/';
+});
+
+angular.module('demoApp')
 .controller('rxFormDemoCtrl', function ($scope) {
     /* ========== DATA ========== */
     $scope.volumeTypes = [
@@ -311,6 +448,55 @@ angular.module('demoApp')
 });
 
 angular.module('demoApp')
+.controller('buttonAnimatedExampleCtrl', function ($scope, $timeout) {
+    $scope.status = {
+        loading: false,
+        disable: false
+    };
+
+    $scope.clickMe = function () {
+        $scope.status.loading = true;
+        $timeout(function () {
+            $scope.status.loading = false;
+        }, 4000);
+    };
+});
+
+angular.module('demoApp')
+.controller('buttonGroupExampleCtrl', function ($scope) {
+    $scope.status = 'off';
+});
+
+angular.module('demoApp')
+.controller('rxButtonDisableCtrl', function ($scope, $timeout) {
+    $scope.status = {
+        loading: false,
+        disable: true
+    };
+
+    $scope.login = function () {
+        $scope.status.loading = true;
+
+        $timeout(function () {
+            $scope.status.loading = false;
+        }, 4000);
+    };//login()
+});
+
+angular.module('demoApp')
+.controller('rxButtonSimpleCtrl', function ($scope, $timeout) {
+    $scope.isLoading = false;
+
+    $scope.login = function () {
+        $scope.isLoading = true;
+
+        $timeout(function () {
+            $scope.isLoading = false;
+        }, 4000);
+    };//login()
+});
+
+angular.module('demoApp')
 .controller('rxCheckboxCtrl', function ($scope) {
     $scope.chkValidEnabledOne = true;
     $scope.chkValidEnabledTwo = false;
@@ -428,6 +614,40 @@ angular.module('demoApp')
 });
 
 angular.module('demoApp')
+.controller('rxSortEmptyTopSimpleCtrl', function ($scope, PageTracking, rxSortUtil) {
+    $scope.sort = rxSortUtil.getDefault('name');
+    $scope.sort = rxSortUtil.getDefault('name', false);
+    $scope.pager = PageTracking.createInstance();
+
+    $scope.sortCol = function (predicate) {
+        return rxSortUtil.sortCol($scope, predicate);
+    };
+
+    $scope.serverVolumes = [
+        {
+            name: 'Monitor Agent 4',
+            volumeId: 'a44079a5-040b-495f-be22-35994ea03cc5'
+        },
+        {
+            name: 'Stress Volume 33',
+            volumeId: '65d89e82-9363-482e-92d1-f3f7d4f135a7'
+        },
+        {
+            name: null,
+            volumeId: '0a87a764-45f0-4a1e-8dbf-20d76291022d'
+        },
+        {
+            name: 'Stress Volume 24',
+            volumeId: ''
+        },
+        {
+            name: null,
+            volumeId: 'be827f83-8d4c-4d4c-afc3-4c9bf0fdfe00'
+        },
+    ];
+});
+
+angular.module('demoApp')
 .controller('rxStatusMappingsSimpleCtrl', function ($scope, rxStatusMappings) {
     $scope.servers = [
         { status: 'ACTIVE', title: 'ACTIVE status' },
@@ -456,6 +676,21 @@ angular.module('demoApp')
 });
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('rxApp.html',
+    '<div ng-controller="rxAppCtrl"><h3>Standard rxApp</h3><rx-app id="standard-rxApp"><rx-page title="\'Standard Page Title\'"><p class="clear">This is my page content</p><button ng-click="changeRoutes()" class="button">Change Routes</button></rx-page></rx-app><h3>Customized rxApp (collapsible)</h3><rx-app collapsible-nav="true" site-title="My App" id="custom-rxApp" menu="customMenu" new-instance="true" hide-feedback="true"><rx-page unsafe-html-title="\'Customized Page <a href=&quot;http://rackspace.com&quot;>Title</a>\'" subtitle="subtitle" status="alpha" account-number="12345"><p class="clear">Click a link in the menu to see the active state change</p><p>Click the toggle to hide the menu</p><button ng-click="changeSubtitle()" class="changeSubtitle button">Change Subtitle</button></rx-page></rx-app><h3>Embedded rxApp</h3><p>rxApp is smart enough to detect if it is loaded in an iframe and will hide the left nav.</p><iframe id="embedded-app" ng-src="{{embedUrl}}"></iframe></div><!--\n' +
+    'You\'ll likely want to implement your HTML in your index.html file as:\n' +
+    '<div ng-app="sampleApp">\n' +
+    '    <rx-app ng-view></rx-app>\n' +
+    '</div>\n' +
+    '\n' +
+    'And the template for each view/page will be something like:\n' +
+    '<rx-page title="\'Example Page\'">\n' +
+    '    Example content\n' +
+    '</rx-page>\n' +
+    '-->');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
   $templateCache.put('rxCollapse.html',
     '<rx-collapse class="demo-with-title" title="A Custom Title" expanded="true">You can put whatever content you want to inside here</rx-collapse><h3>\'See more/See less\' for use with metadata</h3><rx-metadata><section><rx-meta label="Name">Lorem ipsum dolor sit amet</rx-meta><rx-meta label="ID">1aa2bfa9-de8d-42f7-9f6de6437855b36e</rx-meta><rx-meta label="Region">ORD</rx-meta><rx-meta label="Created">December 2, 2014 @ 14:28</rx-meta><rx-collapse class="demo-no-title" expanded="false"><rx-meta label="Name">Lorem ipsum dolor sit amet</rx-meta><rx-meta label="ID">1aa2bfa9-de8d-42f7-9f6de6437855b36e</rx-meta><rx-meta label="Region">ORD</rx-meta><rx-meta label="Created">December 2, 2014 @ 14:28</rx-meta></rx-collapse></section></rx-metadata>');
 }]);
@@ -466,13 +701,18 @@ angular.module('demoApp').run(['$templateCache', function($templateCache) {
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('rxPopover.html',
+    '<div><rx-popover><div class="rs-popover-body"><form class="rs-form-horizontal rs-form-small"><div class="rs-control-group"><label class="rs-control-label">Label One</label><div class="rs-controls"><input type="text" class="rs-input-medium"></div></div><div class="rs-control-group"><label class="rs-control-label">Label Two</label><div class="rs-controls"><input type="text" class="rs-input-medium"> GB</div></div><div class="rs-control-group"><label class="rs-control-label">Label Three</label><div class="rs-controls"><input type="text" class="rs-input-medium"><select><option>One</option><option>Two</option></select></div></div></form></div><div class="rs-popover-footer rs-btn-group"><div class="rs-btn rs-btn-primary">Save</div><div class="rs-btn rs-btn-link">Cancel</div></div></rx-popover></div>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
   $templateCache.put('rxRadio.html',
     '<!-- Sample HTML goes here as a live example of how the component can be used --><div ng-controller="rxRadioCtrl"><h3>Examples</h3><h3>Show/Hide Input</h3><p><strong>Do you like bacon?</strong> <small ng-show="likesbacon">({{likesbacon}})</small></p><p><input rx-radio id="radHateBacon" value="hate it" ng-model="likesbacon" ng-required="true"><label for="radHateBacon">I hate bacon</label></p><p><input rx-radio id="radLikeBacon" value="like it" ng-model="likesbacon" ng-required="true"><label for="radLikeBacon">I like bacon</label></p><p ng-show="likesbacon && likesbacon !== \'hate it\'"><input rx-radio id="radLoveBacon" value="love it" ng-model="likesbacon" ng-required="true"><label for="radLoveBacon">Actually, I LOVE bacon</label></p><br><h3>Destroy Input</h3><p>Support for <code>$destroy</code> events.</p><p><span><input rx-radio id="radDestroyed" value="destroyed" ng-model="radCreateDestroy"><label for="radDestroy">Destroyed</label></span>&nbsp; <span><input rx-radio id="radCreated" value="created" ng-model="radCreateDestroy"><label for="radCreate">Created</label></span></p><p>The following radio is <code>{{radCreateDestroy}}</code>: <input rx-radio checked="checked" id="radTargetCreated" ng-if="radCreateDestroy === \'created\'"></p><!-- END DEMO CODE --><!-- END DEMO CODE --><!-- END DEMO CODE --><h3>Radio States</h3><table><thead><tr><th></th><th>Enabled</th><th>Disabled (ng-disable)</th><th>Disabled (disabled)</th></tr></thead><tbody><tr><th>Valid</th><!-- Valid Enabled --><td><p><input rx-radio id="radValidEnabledOne" value="1" ng-model="validEnabled"><label for="radValidEnabledOne">Selected</label></p><p><input rx-radio id="radValidEnabledTwo" value="2" ng-model="validEnabled"><label for="radValidEnabledTwo">Unselected</label></p></td><!-- Valid NG-Disabled --><td><p><input rx-radio id="radValidNgDisabledOne" value="1" ng-disabled="true" ng-model="validNgDisabled"><label for="radValidNgDisabledOne">Selected</label></p><p><input rx-radio id="radValidNgDisabledTwo" value="2" ng-disabled="true" ng-model="validNgDisabled"><label for="radValidNgDisabledTwo">Unselected</label></p></td><!-- Valid Disabled --><td><p><input rx-radio id="radValidDisabledOne" value="1" disabled="disabled" ng-model="validDisabled"><label for="radValidDisabledOne">Selected</label></p><p><input rx-radio id="radValidDisabledTwo" value="2" disabled="disabled" ng-model="validDisabled"><label for="radValidDisabledTwo">Unselected</label></p></td></tr><tr><th>Invalid</th><!-- Invalid Enabled --><td><p><input rx-radio id="radInvalidEnabledOne" value="1" ng-model="invalidEnabled" always-invalid><label for="radInvalidEnabledOne">Selected</label></p><p><input rx-radio id="radInvalidEnabledTwo" value="2" ng-model="invalidEnabled" always-invalid><label for="radInvalidEnabledTwo">Unselected</label></p></td><!-- Invalid NG-Disabled --><td><p><input rx-radio id="radInvalidNgDisabledOne" value="1" ng-disabled="true" ng-model="invalidNgDisabled" always-invalid><label for="radInvalidNgDisabledOne">Selected</label></p><p><input rx-radio id="radInvalidNgDisabledTwo" value="2" ng-disabled="true" ng-model="invalidNgDisabled" always-invalid><label for="radInvalidNgDisabledTwo">Unselected</label></p></td><!-- Invalid Disabled --><td><p><input rx-radio id="radInvalidDisabledOne" value="1" disabled="disabled" ng-model="invalidDisabled" always-invalid><label for="radInvalidDisabledOne">Selected</label></p><p><input rx-radio id="radInvalidDisabledTwo" value="2" disabled="disabled" ng-model="invalidDisabled" always-invalid><label for="radInvalidDisabledTwo">Unselected</label></p></td></tr></tbody></table><h3>Plain HTML Radios (for comparison)</h3><p><input type="radio" id="plainHtmlNormal" ng-model="plainHtmlRadio" value="plain" ng-required="true"><label for="plainHtmlNormal">A plain radio</label></p><p><input type="radio" id="plainHtmlDisabled" value="disabled" ng-model="plainHtmlRadio" disabled="disabled"><label for="plainHtmlDisabled">A plain radio (disabled)</label></p><p><input type="radio" id="plainHtmlChecked" value="isChecked" ng-model="plainHtmlRadio"><label for="plainHtmlChecked">A plain radio (checked)</label></p><p><input type="radio" id="plainRadRemoveRadio" value="shows" ng-model="plainHtmlRadio"><label for="plainRadRemoveRadio">Add Following Radio:</label><input type="radio" id="plainRadRemoveable" value="hidden" ng-if="plainHtmlRadio === \'shows\'"></p></div>');
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
   $templateCache.put('rxSortableColumn.html',
-    '<div><table class="rs-list-table"><thead><tr><th scope="col"><rx-sortable-column sort-method="sortCol(property)" sort-property="name" predicate="sort.predicate" reverse="sort.reverse">Name</rx-sortable-column></th><th scope="col"><rx-sortable-column sort-method="sortCol(property)" sort-property="jobTitle" predicate="sort.predicate" reverse="sort.reverse">Occupation</rx-sortable-column></th><th scope="col"><rx-sortable-column sort-method="sortCol" sort-property="none" predicate="sort.predicate" reverse="sort.reverse">Testing Sort Errors (see Protractor Tab)</rx-sortable-column></th></tr></thead><tbody id="talentPoolData"><tr ng-repeat="resource in talentPool | orderBy:sort.predicate:sort.reverse"><td scope="row" class="talent-name">{{resource.name}}</td><td class="talent-job">{{resource.jobTitle}}</td><td></td></tr></tbody></table></div>');
+    '<div ng-controller="rxSortableColumnCtrl"><p>Note: The demo table is also using <code>rx-floating-header</code>, which is not required. We\'ve only done this to illustrate that <code>rxSortableColumn</code> works properly with <code>rxFloatingHeader</code>. The table is also using <code>rxSortEmptyTop</code>.</p><table rx-floating-header><thead><tr><th scope="col"><rx-sortable-column sort-method="sortCol(property)" sort-property="name" predicate="sort.predicate" reverse="sort.reverse">Name</rx-sortable-column></th><th scope="col"><rx-sortable-column sort-method="sortCol(property)" sort-property="jobTitle" predicate="sort.predicate" reverse="sort.reverse">Occupation</rx-sortable-column></th><th scope="col"><rx-sortable-column sort-method="sortCol" sort-property="none" predicate="sort.predicate" reverse="sort.reverse">Testing Sort Errors (see Protractor Tab)</rx-sortable-column></th></tr></thead><tbody id="talentPoolData"><tr ng-repeat="resource in talentPool | rxSortEmptyTop:sort.predicate:sort.reverse"><th scope="row" class="talent-name">{{resource.name}}</th><td class="talent-job">{{resource.jobTitle}}</td></tr></tbody></table></div>');
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
@@ -481,13 +721,18 @@ angular.module('demoApp').run(['$templateCache', function($templateCache) {
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('rxActionMenu.html',
+    '<div><p>The cog in the first row is dismissable by clicking anywhere, but the second cog can only be dismissed by clicking on the cog itself.</p><h3 id="typical-usage">Typical Usage</h3><table class="table-striped"><thead><tr><th>Name</th><th class="actions"></th></tr></thead><tbody><tr><td>Globally dismissible</td><td><rx-action-menu id="globalDismissal"><ul class="actions-area"><li><span class="action-menu-category">Manage:</span></li><li><a href="#">Add</a></li><li><a href="#">Delete</a></li></ul></rx-action-menu></td></tr><tr><td>Only dismissible by clicking on cog</td><td><rx-action-menu global-dismiss="false"><ul class="actions-area"><li><span class="action-menu-category">Manage:</span></li><li><a href="#">Add</a></li><li><a href="#">Delete</a></li></ul></rx-action-menu></td></tr><tr><td>Unorthodox Behaviors (no modals, hidden item)</td><td><rx-action-menu id="custom"><ul class="actions-area"><li><span class="action-menu-category">Manage:</span></li><li><a href="#">Add</a></li><li><a href="#">Delete</a></li></ul></rx-action-menu></td></tr></tbody></table></div>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
   $templateCache.put('ActionMenu.docs.html',
     '<p>A component to create a configurable action menu.</p><h3 id="typical-usage">Typical Usage</h3><p>The cog in the first row is dismissable by clicking anywhere, but the second cog can only be dismissed by clicking on the cog itself.</p><rx-example name="ActionMenu.simple"></rx-example>');
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
-  $templateCache.put('rxActionMenu.html',
-    '<div><p>The cog in the first row is dismissable by clicking anywhere, but the second cog can only be dismissed by clicking on the cog itself.</p><h3 id="typical-usage">Typical Usage</h3><table class="table-striped"><thead><tr><th>Name</th><th class="actions"></th></tr></thead><tbody><tr><td>Globally dismissible</td><td><rx-action-menu id="globalDismissal"><ul class="rs-dropdown-menu"><li><span class="rs-dropdown-category">Manage:</span></li><li><a href="#">Add</a></li><li><a href="#">Delete</a></li></ul></rx-action-menu></td></tr><tr><td>Only dismissible by clicking on cog</td><td><rx-action-menu global-dismiss="false"><ul class="rs-dropdown-menu"><li><span class="rs-dropdown-category">Manage:</span></li><li><a href="#">Add</a></li><li><a href="#">Delete</a></li></ul></rx-action-menu></td></tr><tr><td>Unorthodox Behaviors (no modals, hidden item)</td><td><rx-action-menu id="custom"><ul class="rs-dropdown-menu"><li><span class="rs-dropdown-category">Manage:</span></li><li><a href="#">Add</a></li><li><a href="#">Delete</a></li></ul></rx-action-menu></td></tr></tbody></table></div>');
+  $templateCache.put('Buttons.docs.html',
+    '<h1>Primary Buttons</h1><div class="button-group"><button class="button lg">Default Large</button> <button class="button lg" disabled="disabled">Disabled Large</button></div><div class="button-group"><button class="button">Default Medium</button> <button class="button" disabled="disabled">Disabled Medium</button></div><div class="button-group"><button class="button sm">Default Small</button> <button class="button sm" disabled="disabled">Disabled Small</button></div><h1 style="padding-top:40px">Secondary Buttons</h1><div class="button-group"><button class="button lg secondary">Default Large</button> <button class="button lg" disabled="disabled">Disabled Large</button></div><div class="button-group"><button class="button secondary">Default Medium</button> <button class="button" disabled="disabled">Disabled Medium</button></div><div class="button-group"><button class="button sm secondary">Default Small</button> <button class="button sm" disabled="disabled">Disabled Small</button></div>');
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
@@ -496,18 +741,23 @@ angular.module('demoApp').run(['$templateCache', function($templateCache) {
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
-  $templateCache.put('Metadata.docs.html',
-    '<p>Metadata contains directives to provide consistent styling for the display of metadata information.</p><rx-example name="metadata.simple"></rx-example>');
-}]);
-
-angular.module('demoApp').run(['$templateCache', function($templateCache) {
   $templateCache.put('rxMetadata.html',
     '<div><h3>Example</h3><rx-metadata><section><rx-meta label="Field Name">Field Value Example</rx-meta><rx-meta label="Another Field Name">Another Field Value Example</rx-meta><rx-meta label="Third Field Name">The Third Field Value Example</rx-meta><rx-meta label="Super Long Value" class="force-word-break">A super long data value with aseeminglyunbreakablewordthatcouldoverflowtonextcolumn</rx-meta><rx-meta label="Short Field Name">A long field value given here to show line break style.</rx-meta></section><section><rx-meta label="Status" id="metaStatus">Active</rx-meta><rx-meta label="RCN">RCN-555-555-555</rx-meta><rx-meta label="Type">Cloud</rx-meta><rx-meta label="Service Level">Managed &rarr; Managed</rx-meta><rx-meta label="Service Type">DevOps &rarr; SysOps</rx-meta></section><section><rx-meta label="Amount">{{ someAmount | currency }}</rx-meta><rx-meta label="Phone Number Field">888 - 888 - 8888</rx-meta><rx-meta label="Date Field">{{ someDate | date:\'MMMM d, yyyy @ HH:mm (UTCZ)\' }}</rx-meta><rx-meta label="Link Field"><a href="#">Link</a></rx-meta><rx-meta label="Data and Link Field">Some data <a href="#">(Link)</a></rx-meta></section></rx-metadata></div>');
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('Metadata.docs.html',
+    '<p>Metadata contains directives to provide consistent styling for the display of metadata information.</p><rx-example name="metadata.simple"></rx-example>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
   $templateCache.put('rxNestedElement.docs.html',
     '<p>Helper function to aid in the creation of boilerplate Directive Definition Object definitions required to validate nested custom elements.</p>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('rxSortEmptyTop.docs.html',
+    '<p>Moves rows with an empty predicate to the top of the column in ascending order, and to the bottom in descending order.</p><rx-example name="rxSortEmptyTop.simple"></rx-example>');
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
