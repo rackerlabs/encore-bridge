@@ -81,7 +81,7 @@ gulp.task('watch', ['build'], function () {
 
 gulp.task('demo', ['build'], function () {
   const templates = files()
-  .pipe(filter('**/docs/*.html'))
+  .pipe(filter('**/docs/**/*.html'))
   .pipe(htmlmin({
     collapseWhitespace: true
   }))

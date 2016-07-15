@@ -14,9 +14,11 @@
       "ActionMenu",
       "Buttons",
       "Forms",
-      "Metadata"
+      "Metadata",
+      "Tags"
     ],
     "utilities": [
+      "rxDOMHelper",
       "rxNestedElement",
       "rxSortEmptyTop",
       "rxSortUtil",
