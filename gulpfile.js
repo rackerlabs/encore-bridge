@@ -66,9 +66,10 @@ gulp.task('build:styles', function () {
     '@import (reference) "encore-ui/src/styles/vars.less";',
     '@import (reference) "encore-ui/src/styles/mixins.less";',
     '@import "encore-ui/src/components/rxApp/common.less";',
-    '@import (reference) "vars.less";'
+    '@import (reference) "vars.less";',
+    '@import "encore-ui/src/components/layout/layout.less";'
   ].join('\n')))
-  .pipe(less({ paths: ['./', './src/styles', './encore-ui/node_modules/normalize.css'] }))
+  .pipe(less({ paths: ['./', './src/styles', './encore-ui/src/styles', './encore-ui/node_modules/normalize.css'] }))
   .pipe(gulp.dest('./demo/'));
 });
 

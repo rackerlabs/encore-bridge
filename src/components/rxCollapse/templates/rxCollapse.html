@@ -1,18 +1,24 @@
-<div class="rs-facet-section rs-collapsible-section {{isExpanded ? 'expanded' : 'collapsed'}}">
-  <div ng-if="title" class="rs-detail-section-header">
-    <div class="rs-caret" ng-click="toggleExpanded()"></div>
-    <div class="rs-detail-section-title">{{title}}</div>
+<div class="collapse-container" ng-class="{'hide-border': !title}">
+  <div ng-if="title" class="collapse-title-wrap">
+    <div class="rx-collapse-title">{{title}}</div>
+    <i class="fa {{isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}}" ng-click="toggleExpanded()"></i>
   </div>
 
-  <div class="rs-detail-section-body" ng-transclude></div>
+  <div ng-show="isExpanded" ng-class="{'collapse-body':title}" ng-transclude></div>
 
-  <div ng-if="!title && !isExpanded" class="rs-facet-section-toggle" ng-click="toggleExpanded()">
-    <i class="rs-facet-toggle-arrow"></i>
-    more
-  </div>
+  <div ng-if="!title"
+       ng-class="{ expanded: isExpanded }"
+       class="collapse-title-wrap collapse-title-wrap-default"
+       ng-click="toggleExpanded()">
 
-  <div ng-if="!title && isExpanded" class="rs-facet-section-toggle" ng-click="toggleExpanded()">
-    <i class="rs-facet-toggle-arrow"></i>
-    less
+    <span ng-if="!isExpanded" class="sml-title">
+      <span class="toggle-title">See More</span>
+      <i class="fa fa-angle-double-down"></i>
+    </span>
+
+    <span ng-if="isExpanded" class="sml-title">
+      <span class="toggle-title">See Less</span>
+      <i class="fa fa-angle-double-up"></i>
+    </span>
   </div>
 </div>
