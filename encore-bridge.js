@@ -441,6 +441,122 @@ angular.module('encore.ui.utilities')
     };
 });
 
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxDOMHelper
+ * @description
+ * A small set of functions to provide some functionality
+ * that isn't present in [Angular's jQuery-lite](https://docs.angularjs.org/api/ng/function/angular.element),
+ * and other DOM-related functions that are useful.
+ *
+ * **NOTE:** All methods take jQuery-lite wrapped elements as arguments.
+ */
+.factory('rxDOMHelper', function ($document, $window) {
+    var scrollTop = function () {
+        // Safari and Chrome both use body.scrollTop, but Firefox needs
+        // documentElement.scrollTop
+        var doc = $document[0];
+        var scrolltop = $window.pageYOffset || doc.body.scrollTop || doc.documentElement.scrollTop || 0;
+        return scrolltop;
+    };
+
+    var offset = function (elm) {
+        //http://cvmlrobotics.blogspot.co.at/2013/03/angularjs-get-element-offset-position.html
+        var rawDom = elm[0];
+        var _x = 0;
+        var _y = 0;
+        var doc = $document[0];
+        var body = doc.documentElement || doc.body;
+        var scrollX = $window.pageXOffset || body.scrollLeft;
+        var scrollY = scrollTop();
+        var rect = rawDom.getBoundingClientRect();
+        _x = rect.left + scrollX;
+        _y = rect.top + scrollY;
+        return { left: _x, top: _y };
+    };
+
+    var style = function (elem) {
+        if (elem instanceof angular.element) {
+            elem = elem[0];
+        }
+        return $window.getComputedStyle(elem);
+    };
+
+    var width = function (elem) {
+        return style(elem).width;
+    };
+
+    var height = function (elem) {
+        return style(elem).height;
+    };
+
+    var shouldFloat = function (elem, maxHeight) {
+        var elemOffset = offset(elem),
+            scrolltop = scrollTop();
+
+        return ((scrolltop > elemOffset.top) && (scrolltop < elemOffset.top + maxHeight));
+    };
+
+    // An implementation of wrapAll, based on
+    // http://stackoverflow.com/a/13169465
+    // Takes a raw DOM `newParent`, and moves all of `elms` (either
+    // a single element or an array of elements) into it. It then places
+    // `newParent` in the location that elms[0] was originally in
+    var wrapAll = function (newParent, elms) {
+        // Figure out if it's one element or an array
+        var isGroupParent = ['SELECT', 'FORM'].indexOf(elms.tagName) !== -1;
+        var el = (elms.length && !isGroupParent) ? elms[0] : elms;
+
+        // cache the current parent node and sibling
+        // of the first element
+        var parentNode = el.parentNode;
+        var sibling = el.nextSibling;
+
+        // wrap the first element. This automatically
+        // removes it from its parent
+        newParent.appendChild(el);
+
+        // If there are other elements, wrap them. Each time
+        // it will remove the element from its current parent,
+        // and also from the `elms` array
+        if (!isGroupParent) {
+            while (elms.length) {
+                newParent.appendChild(elms[0]);
+            }
+        }
+
+        // If there was a sibling to the first element,
+        // insert newParent right before it. Otherwise
+        // just add it to parentNode
+        if (sibling) {
+            parentNode.insertBefore(newParent, sibling);
+        } else {
+            parentNode.appendChild(newParent);
+        }
+    };
+
+    // bind `f` to the scroll event
+    var onscroll = function (f) {
+        angular.element($window).bind('scroll', f);
+    };
+
+    var find = function (elem, selector) {
+        return angular.element(elem[0].querySelector(selector));
+    };
+
+    return {
+        offset: offset,
+        scrollTop: scrollTop,
+        width: width,
+        height: height,
+        shouldFloat: shouldFloat,
+        onscroll: onscroll,
+        find: find,
+        wrapAll: wrapAll
+    };
+});
+
 /**
  * @ngdoc overview
  * @name elements
@@ -461,6 +577,132 @@ angular.module('encore.ui.utilities')
 angular.module('encore.ui.elements', [
     'encore.ui.utilities'
 ]);
+
+angular.module('encore.ui.elements')
+/**
+ * @ngdoc directive
+ * @name rxTags.directive:rxTags
+ * @description
+ *
+ * Like native form components, this directive uses `ng-model` to store
+ * its value. The only other required attribute is `options` which accepts an
+ * array of available tags that can be applied.  The tags are objects, each
+ * with required `text` and `category` properties.  Any additional properties
+ * will be ignored.
+ * <pre>
+ * $scope.colorOptions = [
+ *   {
+ *     "text": "blue",
+ *     "category": "color"
+ *   }
+ *   // ...
+ *  ]
+ * </pre>
+ *
+ * By default, the model value is a subset of the options, meaning an new array
+ * containing some of the same objects.  However, the `key` attribute can be
+ * used to customize the model binding by selecting a single value to represent
+ * the object, e.g.
+ * <pre>
+ * <rx-tags options="colorOptions" ng-model="colors" key="id"></rx-tags>
+ * </pre>
+ *
+ * <pre>
+ * $scope.colorOptions = [
+ *  {
+ *   "id": "tag0",
+ *   "text": "blue",
+ *   "category": "color"
+ *  }
+ * ]
+ *
+ * // $scope.colors === ["tag0"] when selected
+ * </pre>
+ *
+ * This component can be disabled via the `disabled` attribute or `ng-disabled`
+ * directive.
+ * @param {Array} options - The list of available tags.
+ * @param {String=} [key=undefined] - Determines a value of the tag object to
+ * use when binding an option to the model.
+ * If not provided, the tag object is used.
+ */
+.directive('rxTags', function (rxDOMHelper) {
+    return {
+        templateUrl: 'templates/rxTags.html',
+        restrict: 'E',
+        require: 'ngModel',
+        scope: {
+            options: '=',
+        },
+        link: function (scope, element, attrs, ngModelCtrl) {
+            var container = rxDOMHelper.find(element, '.rx-tags')[0];
+            var input = element.find('input')[0];
+
+            function changeFocus (event) {
+                (event.target.previousElementSibling || input).focus();
+            }
+
+            attrs.$observe('disabled', function (disabled) {
+                scope.disabled = (disabled === '') || disabled;
+            });
+
+            scope.focusInput = function (event) {
+                if (event.target === container) {
+                    input.focus();
+                }
+            };
+
+            scope.removeIfBackspace = function (event, tag) {
+                if (event.keyCode === 8) {
+                    event.preventDefault();
+                    scope.remove(tag);
+                    changeFocus(event);
+                }
+            };
+
+            scope.focusTag = function (event, value) {
+                if (event.keyCode === 8 && _.isEmpty(value)) {
+                    changeFocus(event);
+                }
+            };
+
+            scope.add = function (tag) {
+                /*
+                 * See https://code.angularjs.org/1.3.20/docs/api/ng/type/ngModel.NgModelController#$setViewValue
+                 * We have to use `concat` to create a new array to trigger $parsers
+                 */
+                var updatedTags = scope.tags.concat([tag]);
+                // sets ngModelCtrl.$viewValue then $$debounceViewValueCommit()
+                ngModelCtrl.$setViewValue(updatedTags);
+                scope.tags = updatedTags;
+                scope.newTag = ''; // reset new tag input
+            };
+
+            scope.remove = function (tag) {
+                var updatedTags = _.without(scope.tags, tag);
+                ngModelCtrl.$setViewValue(updatedTags);
+                scope.tags = updatedTags;
+                input.focus();
+            };
+
+            if (!_.isEmpty(attrs.key)) {
+                ngModelCtrl.$parsers.push(function ($viewValue) {
+                    return _.pluck($viewValue, attrs.key);
+                });
+
+                ngModelCtrl.$formatters.push(function ($modelValue) {
+                    return scope.options.filter(function (option) {
+                        return _.contains($modelValue, option[attrs.key]);
+                    });
+                });
+            }
+
+            ngModelCtrl.$render = function () {
+                scope.tags = ngModelCtrl.$viewValue || [];
+            };
+        }
+    };
+});
 
 angular.module('encore.ui.elements')
 /**
@@ -3573,4 +3815,9 @@ angular.module('encore.bridge').run(['$templateCache', function($templateCache) 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxMeta.html',
     '<!-- TODO: remove in favor of auto detection --><div><div class="label">{{label}}:</div><div class="definition ng-transclude"></div></div>');
+}]);
+
+angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
+  $templateCache.put('templates/rxTags.html',
+    '<div class="rx-tags" ng-click="focusInput($event)"><div class="tag" ng-repeat="tag in tags track by tag.text" ng-keydown="removeIfBackspace($event, tag)" tabindex="{{ disabled ? \'\' : 0 }}"><i class="fa fa-tag"></i> <span class="text">{{tag.text}}</span> <span class="category">({{tag.category}})</span> <i class="fa fa-times" ng-click="remove(tag)"></i></div><input type="text" placeholder="{{ disabled ? \'\' : \'Enter a tag\' }}" ng-model="newTag" ng-keydown="focusTag($event, newTag)" ng-disabled="disabled" typeahead="tag as tag.text for tag in options | xor:tags | filter:{text: $viewValue}" typeahead-on-select="add(newTag)"></div>');
 }]);

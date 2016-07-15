@@ -46,6 +46,9 @@ angular.module('demoApp', [
     templateUrl: 'rxMetadata.html',
     controller: 'metadataSimpleExampleCtrl'
   })
+  .when('/elements/Tags', {
+    templateUrl: 'tags.simple.html'
+  })
   .otherwise('/');
 })
 .run(function ($rootScope) {
@@ -57,7 +60,7 @@ angular.module('demoApp', [
     return _.last(mod.split('.'));
   })
   .value();
-  $rootScope.elements = ['ActionMenu', 'Buttons', 'Forms', 'Metadata'];
+  $rootScope.elements = ['ActionMenu', 'Buttons', 'Forms', 'Metadata', 'Tags'];
 
   $rootScope.$on('$routeChangeSuccess', function (event, route) {
     $rootScope.activePrimaryNavItem = route.$$route.originalPath.split('/')[1];

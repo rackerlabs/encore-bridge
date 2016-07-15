@@ -1837,6 +1837,93 @@ rx-metadata rx-meta {
 rx-metadata rx-meta.force-word-break {
   word-break: break-all;
 }
+rx-tags .rx-tags .tag {
+  background-color: #0E94A6;
+}
+rx-tags .rx-tags .tag:focus {
+  background-color: #0C7C84;
+}
+rx-tags .rx-tags .tag .fa-tag,
+rx-tags .rx-tags .tag .text,
+rx-tags .rx-tags .tag .category,
+rx-tags .rx-tags .tag .fa-times {
+  color: #ffffff;
+}
+/*
+ * rxTags
+ */
+rx-tags {
+  display: block;
+}
+rx-tags[disabled] .rx-tags {
+  border: 0;
+}
+rx-tags[disabled] .rx-tags .fa-times {
+  display: none;
+}
+rx-tags[disabled] .rx-tags:hover {
+  cursor: default;
+}
+.rx-tags {
+  background-color: #ffffff;
+  border: 1px solid #bdbdbd;
+}
+.rx-tags:hover {
+  cursor: text;
+}
+.rx-tags input {
+  width: 200px;
+  padding: 3px 5px;
+  margin: 8px 0;
+}
+.rx-tags .tag {
+  display: inline-block;
+  margin: 6px 10px;
+  line-height: 24px;
+  border-radius: 12px;
+  vertical-align: top;
+  background-color: #e0e0e0;
+}
+.rx-tags .tag:hover {
+  cursor: default;
+}
+.rx-tags .tag:focus {
+  background-color: #0D74D1;
+  outline: none;
+}
+.rx-tags .tag:focus .fa,
+.rx-tags .tag:focus .text,
+.rx-tags .tag:focus .category {
+  color: #ffffff;
+}
+.rx-tags .tag > * {
+  vertical-align: middle;
+}
+.rx-tags .tag .text {
+  font-size: 12px;
+  margin: 0 7px 0 10px;
+  color: #616161;
+}
+.rx-tags .tag .category {
+  font-size: 10px;
+  margin-right: 20px;
+  color: #616161;
+}
+.rx-tags .tag .fa-tag {
+  margin-left: 12px;
+  color: #9e9e9e;
+}
+.rx-tags .tag .fa-times {
+  margin-right: 12px;
+  color: #9e9e9e;
+}
+.rx-tags .tag .fa-times:hover {
+  cursor: pointer;
+  color: #616161;
+}
+.rx-tags .tag:focus .fa-times:hover {
+  color: #ffffff;
+}
 .rxStatusMappings-demo .demo-status-column-table {
   max-width: 500px;
 }
