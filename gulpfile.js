@@ -75,6 +75,10 @@ gulp.task('build:styles', function () {
 
 gulp.task('build', ['build:styles', 'build:scripts']);
 
+gulp.task('build:dist', ['build'], function () {
+  gulp.src('demo/encore-bridge.*').pipe(gulp.dest('./dist'));
+});
+
 gulp.task('watch', ['build'], function () {
   gulp.watch('src/**/*.less', ['build:styles']);
   gulp.watch('src/**/*', ['build:scripts']);
