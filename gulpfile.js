@@ -73,9 +73,15 @@ gulp.task('build:styles', function () {
   .pipe(gulp.dest('./demo/'));
 });
 
+gulp.task('build:less', function () {
+  gulp.src(['encore-ui/src/styles/vars.less', 'src/styles/vars.less'])
+  .pipe(concat('encore-bridge.less'))
+  .pipe(gulp.dest('./dist'))
+});
+
 gulp.task('build', ['build:styles', 'build:scripts']);
 
-gulp.task('build:dist', ['build'], function () {
+gulp.task('build:dist', ['build', 'build:less'], function () {
   gulp.src('demo/encore-bridge.*').pipe(gulp.dest('./dist'));
 });
 
