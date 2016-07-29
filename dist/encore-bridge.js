@@ -1264,6 +1264,21 @@ angular.module('encore.ui.elements')
 });
 
 angular.module('encore.ui.elements')
+.config(function ($provide) {
+  $provide.decorator('rxActionMenuDirective', function ($delegate) {
+    // https://github.com/angular/angular.js/issues/10149
+    _.each(['type', 'text'], function (key) {
+      $delegate[0].$$isolateBindings[key] = {
+        attrName: key,
+        mode: '@',
+        optional: true
+      };
+    });
+    return $delegate;
+  });
+});
+
+angular.module('encore.ui.elements')
 /**
  * @ngdoc directive
  * @name elements.directive:rxActionMenu
@@ -1328,21 +1343,6 @@ angular.module('encore.ui.elements')
             // https://github.com/angular-ui/bootstrap/blob/master/src/tooltip/tooltip.js
         }
     };
-});
-
-angular.module('encore.ui.elements')
-.config(function ($provide) {
-  $provide.decorator('rxActionMenuDirective', function ($delegate) {
-    // https://github.com/angular/angular.js/issues/10149
-    _.each(['type', 'text'], function (key) {
-      $delegate[0].$$isolateBindings[key] = {
-        attrName: key,
-        mode: '@',
-        optional: true
-      };
-    });
-    return $delegate;
-  });
 });
 
 /**
@@ -3411,17 +3411,28 @@ angular.module('encore.ui.rxApp')
 });
 
 angular.module('encore.ui.rxApp')
-.directive('rxApp', function () {
+.provider('appRoutes', function () {
+  this.routes = [];
+  this.$get = function () {
+    return this.routes;
+  };
+});
+
+angular.module('encore.ui.rxApp')
+.directive('rxApp', function (appRoutes) {
   return {
     restrict: 'E',
     transclude: true,
-    templateUrl: 'templates/rxApp.html'
+    templateUrl: 'templates/rxApp.html',
+    link: function (scope) {
+      scope.routes = appRoutes;
+    }
   };
 });
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxApp.html',
-    '<div class="rx-app"><div class="rx-eyebrow"><ul class="rx-nav pull-left"><li class="rx-nav-item"><a href="#"><span class="rackspace-logo-bw"></span></a></li><li class="rx-nav-item"><rx-action-menu text="MyRackspace"><ul class="actions-area"></ul></rx-action-menu></li></ul><ul class="rx-nav pull-right"><li class="rx-nav-item"><a href="https://my.rackspace.com/portal/feedback/index">Feedback</a></li><li class="rx-nav-item"><a href="https://my.rackspace.com/portal/ticket/create">Feedback</a></li><li class="rx-nav-item"><a href="#">Contact Support</a></li><li class="rx-nav-item"><rx-action-menu class="account-menu" text="Barbra Streisand"><ul class="actions-area"><li><div>Account: 123456</div><div>Company ABC</div></li><li class="divider"></li><li><a href="#">Notifications<div class="caption">Incidents, maintenances, etc.</div></a></li><li><a href="#">Support Tickets<div class="caption">Your support questions</div></a></li><li class="divider"></li><li><a href="#">Profile Settings</a></li><li><a href="#">Logout</a></li></ul></rx-action-menu></li></ul></div><div class="rx-nav-primary"><ul class="rx-nav"><li class="rx-nav-item" ng-class="{\'active\': activePrimaryNavItem === \'components\'}"><rx-action-menu text="Components" type="utility"><ul class="actions-area"><li ng-repeat="component in components"><a class="rs-dropdown-link" ng-href="#/components/{{component}}">{{component}}</a></li></ul></rx-action-menu></li><li class="rx-nav-item" ng-class="{\'active\': activePrimaryNavItem === \'elements\'}"><rx-action-menu text="Elements" type="utility"><ul class="actions-area"><li ng-repeat="element in elements"><a class="rs-dropdown-link" ng-href="#/elements/{{element}}">{{element}}</a></li></ul></rx-action-menu></li></ul></div><div ng-transclude></div><div class="rx-push"></div></div><div class="rx-footer"><ul class="rx-nav"><li class="rx-nav-item">&copy; Rackspace, US</li><li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a></li><li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a></li></ul></div>');
+    '<div class="rx-app"><div class="rx-eyebrow"><ul class="rx-nav pull-left"><li class="rx-nav-item"><a href="#"><span class="rackspace-logo-bw"></span></a></li><li class="rx-nav-item"><rx-action-menu text="MyRackspace"><ul class="actions-area"></ul></rx-action-menu></li></ul><ul class="rx-nav pull-right"><li class="rx-nav-item"><a href="https://my.rackspace.com/portal/feedback/index">Feedback</a></li><li class="rx-nav-item"><a href="https://my.rackspace.com/portal/ticket/create">Feedback</a></li><li class="rx-nav-item"><a href="#">Contact Support</a></li><li class="rx-nav-item"><rx-action-menu class="account-menu" text="Barbra Streisand"><ul class="actions-area"><li><div>Account: 123456</div><div>Company ABC</div></li><li class="divider"></li><li><a href="#">Notifications<div class="caption">Incidents, maintenances, etc.</div></a></li><li><a href="#">Support Tickets<div class="caption">Your support questions</div></a></li><li class="divider"></li><li><a href="#">Profile Settings</a></li><li><a href="#">Logout</a></li></ul></rx-action-menu></li></ul></div><div class="rx-nav-primary" ng-if="routes.length > 0"><ul class="rx-nav"><li class="rx-nav-item" ng-repeat="route in routes" ng-class="{\'active\': activePrimaryNavItem === \'components\'}"><rx-action-menu text="{{route.title}}" type="utility" ng-if="route.children && route.children.length > 0"><ul class="actions-area"><li ng-repeat="navItem in route.children"><a class="rs-dropdown-link" ng-href="{{navItem.href}}">{{navItem.linkText}}</a></li></ul></rx-action-menu><a ng-if="!route.children" ng-href="{{route.href}}">{{route.title}}</a></li></ul></div><div ng-transclude></div><div class="rx-push"></div></div><div class="rx-footer"><ul class="rx-nav"><li class="rx-nav-item">&copy; Rackspace, US</li><li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a></li><li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a></li></ul></div>');
 }]);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
