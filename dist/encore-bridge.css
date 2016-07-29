@@ -1412,6 +1412,9 @@ this the same font stack that Normalize.css sets for the `body`.
 .pure-u-24-24 {
     width: 100%;
 }
+.pure-g {
+  font-family: "Roboto", sans-serif;
+}
 .rx-app {
   min-height: 100%;
   margin: 0 auto -40px;
@@ -1420,6 +1423,9 @@ this the same font stack that Normalize.css sets for the `body`.
   min-height: 40px;
   background: #000000;
   padding: 0 60px;
+}
+.rx-app .rx-eyebrow .rx-nav-logo {
+  padding-bottom: 0;
 }
 .rx-app .rx-eyebrow .rackspace-logo-bw {
   display: block;
