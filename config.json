@@ -2,6 +2,7 @@
   "submodule": "encore-ui/src",
   "modules": {
     "components": [
+      "layout",
       "rxApp",
       "rxCollapse",
       "rxForm",

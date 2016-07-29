@@ -1,4 +1,4 @@
-angular.module('encore.bridge', ['encore.ui.rxApp','encore.ui.rxCollapse','encore.ui.rxForm','encore.ui.rxPopover','encore.ui.rxRadio','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.utilities','encore.ui.elements']);
+angular.module('encore.bridge', ['encore.ui.layout','encore.ui.rxApp','encore.ui.rxCollapse','encore.ui.rxForm','encore.ui.rxPopover','encore.ui.rxRadio','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.utilities','encore.ui.elements']);
 
 angular.module('encore.ui.utilities', []);
 
@@ -1264,21 +1264,6 @@ angular.module('encore.ui.elements')
 });
 
 angular.module('encore.ui.elements')
-.config(function ($provide) {
-  $provide.decorator('rxActionMenuDirective', function ($delegate) {
-    // https://github.com/angular/angular.js/issues/10149
-    _.each(['type', 'text'], function (key) {
-      $delegate[0].$$isolateBindings[key] = {
-        attrName: key,
-        mode: '@',
-        optional: true
-      };
-    });
-    return $delegate;
-  });
-});
-
-angular.module('encore.ui.elements')
 /**
  * @ngdoc directive
  * @name elements.directive:rxActionMenu
@@ -1343,6 +1328,21 @@ angular.module('encore.ui.elements')
             // https://github.com/angular-ui/bootstrap/blob/master/src/tooltip/tooltip.js
         }
     };
+});
+
+angular.module('encore.ui.elements')
+.config(function ($provide) {
+  $provide.decorator('rxActionMenuDirective', function ($delegate) {
+    // https://github.com/angular/angular.js/issues/10149
+    _.each(['type', 'text'], function (key) {
+      $delegate[0].$$isolateBindings[key] = {
+        attrName: key,
+        mode: '@',
+        optional: true
+      };
+    });
+    return $delegate;
+  });
 });
 
 /**
@@ -3429,6 +3429,29 @@ angular.module('encore.ui.rxApp')
     }
   };
 });
+
+/**
+ * @ngdoc overview
+ * @name layout
+ * @description
+ * # layout Component
+ *
+ * Encore UI includes a grid system forked from
+ * [Angular Material's layout module](https://material.angularjs.org/#/layout/container)
+ * with minor usability enhancements to provide an assortment of attribute-based
+ * layout options based on the flexbox layout model. Included are intuitive attribute
+ * based styles that ease the creation of responsive row and/or column based page layouts.
+ *
+ * ## Note About Responsive Features
+ *
+ * Two versions of the Encore UI CSS file are included in this project. One includes
+ * responsive design style attributes (encore-ui-resp-x.x.x.css). The other omits
+ * these attributes to save space if desired (encore-ui-x.x.x.css). Be sure to only
+ * include the appropriate css file for your project. Any attributes which include
+ * the following suffixes require the responsive css file to work:
+ * '-sm', '-gt-sm', '-md', '-gt-md', '-lg', '-gt-lg'.
+ */
+angular.module('encore.ui.layout', []);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxApp.html',

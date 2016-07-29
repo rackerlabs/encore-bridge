@@ -7,6 +7,9 @@ angular.module('demoApp', [
   .when('/', {
     templateUrl: 'home.html'
   })
+  .when('/components/layout', {
+    templateUrl: 'layout.docs.html'
+  })
   .when('/components/rxCollapse', {
     templateUrl: 'rxCollapse.html',
   })
