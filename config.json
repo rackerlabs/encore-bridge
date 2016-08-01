@@ -19,12 +19,14 @@
       "Tags"
     ],
     "utilities": [
+      "UtcOffsets",
       "rxDOMHelper",
       "rxNestedElement",
       "rxSortEmptyTop",
       "rxSortUtil",
       "rxStatusColumnIcons",
-      "rxStatusMappings"
+      "rxStatusMappings",
+      "rxTimePickerUtil"
     ]
   }
 }
