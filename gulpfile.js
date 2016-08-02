@@ -1,3 +1,5 @@
+'use strict';
+
 const _ = require('lodash');
 const concat = require('gulp-concat');
 const filesort = require('gulp-angular-filesort');

@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "serve": "./node_modules/.bin/json-proxy -p 9001 demo",
+    "visreg": "./node_modules/.bin/protractor protractor.visreg.conf.js"
   },
   "author": "",
   "license": "ISC",
@@ -17,9 +18,12 @@
     "gulp-insert": "^0.5.0",
     "gulp-less": "^3.1.0",
     "gulp-ng-html2js": "^0.2.2",
+    "json-proxy": "^0.9.1",
     "lodash": "^4.12.0",
     "merge-stream": "^1.0.0",
     "merge2": "^1.0.2",
+    "protractor": "^3.3.0",
+    "snappit-mocha-protractor": "^0.5.1",
     "vinyl-fs": "^2.4.3"
   }
 }

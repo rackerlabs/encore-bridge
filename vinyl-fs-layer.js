@@ -1,3 +1,5 @@
+'use strict';
+
 const Transform = require('stream').Transform;
 const vinylFs = require('vinyl-fs');
 

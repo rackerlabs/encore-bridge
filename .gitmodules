@@ -1,3 +1,6 @@
 [submodule "encore-ui"]
 	path = encore-ui
 	url = git@github.com:rackerlabs/encore-ui.git
+[submodule "encore-bridge-screenshots"]
+	path = encore-bridge-screenshots
+	url = git@github.com:rackerlabs/encore-bridge-screenshots.git
