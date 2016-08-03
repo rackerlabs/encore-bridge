@@ -52,6 +52,12 @@ angular.module('demoApp', [
   .when('/elements/Tags', {
     templateUrl: 'tags.simple.html'
   })
+  .when('/styles/color', {
+    templateUrl: 'views/color.html'
+  })
+  .when('/styles/typography', {
+    templateUrl: 'views/typography.html'
+  })
   .otherwise('/');
 
   var components = angular.module('encore.bridge').requires
@@ -76,6 +82,15 @@ angular.module('demoApp', [
   }, {
     title: 'Elements',
     children: elements.map(defineRoute('elements'))
+  }, {
+    title: 'Styles',
+    children: [{
+      linkText: 'Color',
+      href: '#/styles/color'
+    }, {
+      linkText: 'Typography',
+      href: '#/styles/typography'
+    }]
   }];
 })
 .run(function ($rootScope) {
