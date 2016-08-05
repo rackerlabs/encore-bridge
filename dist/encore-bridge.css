@@ -433,7 +433,7 @@ th {
 html,
 body {
   height: 100%;
-  font-size: 13px;
+  font-size: 16px;
   color: #424242;
   font-family: "Roboto", sans-serif;
 }
@@ -476,12 +476,12 @@ p {
 }
 a {
   text-decoration: none;
-  color: #0D74D1;
+  color: #0E94A6;
 }
 a:hover,
 a:focus {
   text-decoration: underline;
-  color: #0075de;
+  color: #16B9D4;
 }
 table {
   clear: both;
@@ -1529,13 +1529,39 @@ this the same font stack that Normalize.css sets for the `body`.
   padding: 0 10px 0 0;
   content: '\2022';
 }
+html,
+body {
+  color: #333333;
+}
+h1 {
+  font-size: 1.5em;
+}
+h1.light {
+  font-weight: 300;
+}
+h2 {
+  font-size: 1.25em;
+}
+h3 {
+  font-weight: 500;
+}
+.subdued {
+  font-weight: 500;
+  font-size: 0.813em;
+}
+.secondary-text {
+  font-size: 0.875em;
+}
+.status-tag {
+  font-size: 0.75em;
+}
 /*
  * Common
  */
 html,
 body {
   height: 100%;
-  font-size: 13px;
+  font-size: 16px;
   color: #424242;
   font-family: "Roboto", sans-serif;
 }
@@ -1578,12 +1604,12 @@ p {
 }
 a {
   text-decoration: none;
-  color: #0D74D1;
+  color: #0E94A6;
 }
 a:hover,
 a:focus {
   text-decoration: underline;
-  color: #0075de;
+  color: #16B9D4;
 }
 table {
   clear: both;
@@ -1875,7 +1901,7 @@ rx-field-name .wrapper .required-symbol {
   color: #f44336;
 }
 [rx-form] {
-  font-size: 13px;
+  font-size: 16px;
   margin: 16px 0;
 }
 [rx-form] rx-field-name,
@@ -2204,7 +2230,7 @@ rx-field-name .wrapper .required-symbol {
   position: relative;
 }
 .action-list {
-  font-size: 13px;
+  font-size: 16px;
   z-index: 1000;
   position: absolute;
   top: 1.5em;
@@ -2224,6 +2250,30 @@ rx-field-name .wrapper .required-symbol {
 }
 .actions-area > li {
   padding: 0 7px;
+}
+.button {
+  text-transform: uppercase;
+}
+.button:active {
+  background: #0C7C84;
+}
+.button:focus {
+  outline: none;
+}
+.button.secondary {
+  background: #ffffff;
+  color: #0C7C84;
+  border: 1px solid #0C7C84;
+}
+.button.secondary:hover {
+  border-color: #16B9D4;
+  background: #16B9D4;
+  color: #ffffff;
+}
+.button.secondary:active {
+  border-color: #0C7C84;
+  background: #0C7C84;
+  color: #ffffff;
 }
 /*
  * rxButton
@@ -2353,7 +2403,7 @@ rx-field-name .wrapper .required-symbol {
   }
 }
 .btn-link {
-  color: #0D74D1;
+  color: #0E94A6;
   background: none;
   border: 0;
   padding: 0;
@@ -2411,17 +2461,6 @@ thead th .btn-link:focus {
 .button-group input:checked + label {
   color: #ffffff;
   background: #757575;
-}
-.button {
-  text-transform: uppercase;
-}
-.button:active {
-  background: #0C7C84 !important;
-}
-.button.secondary {
-  background: #ffffff;
-  color: #0C7C84 !important;
-  border: 1px solid #0C7C84;
 }
 .button-group.demo-button-width {
   width: 250px;
