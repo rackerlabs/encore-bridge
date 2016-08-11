@@ -17,8 +17,8 @@ var config = {
         defaultResolutions: [[768, 1024], [1024, 768]], // tablet
         cicd: {
             serviceAccount: {
-                userName: 'megalord',
-                userEmail: 'megalord@users.noreply.github.com'
+                userName: 'comeatmebro',
+                userEmail: 'comeatmebro@users.noreply.github.com'
             },
             screenshotsRepo: 'https://github.com/rackerlabs/encore-bridge-screenshots',
             projectRepo: 'https://github.com/rackerlabs/encore-bridge'
