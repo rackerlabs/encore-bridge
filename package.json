@@ -23,6 +23,7 @@
     "merge-stream": "^1.0.0",
     "merge2": "^1.0.2",
     "mocha": "^3.0.0",
+    "normalize.css": "^3.0.3",
     "protractor": "^3.3.0",
     "snappit-mocha-protractor": "^0.5.1",
     "vinyl-fs": "^2.4.3"
