@@ -1,27 +1,45 @@
-<h1 >Primary Buttons</h1>
-<div class="button-group" id="primary-large">
+<h1>Primary Buttons</h1>
+<div id="primary-large">
   <button class="button lg">Default Large</button>
   <button class="button lg" disabled>Disabled Large</button>
 </div>
-<div class="button-group">
+<div>
   <button class="button">Default Medium</button>
   <button class="button" disabled>Disabled Medium</button>
 </div>
-<div class="button-group">
+<div>
   <button class="button sm">Default Small</button>
   <button class="button sm" disabled>Disabled Small</button>
 </div>
 
 <h1 style="padding-top:40px">Secondary Buttons</h1>
-<div class="button-group" id="secondary-large">
+<div id="secondary-large">
   <button class="button lg secondary">Default Large</button>
   <button class="button lg" disabled>Disabled Large</button>
 </div>
-<div class="button-group">
+<div>
   <button class="button secondary">Default Medium</button>
   <button class="button" disabled>Disabled Medium</button>
 </div>
-<div class="button-group">
+<div>
   <button class="button sm secondary">Default Small</button>
   <button class="button sm" disabled>Disabled Small</button>
+</div>
+
+<h1 style="padding-top:40px">Button Groups</h1>
+<h3>Simple Buttons</h3>
+<div class="button-group">
+  <button class="button">One</button>
+  <button class="button">Two</button>
+  <button class="button">Three</button>
+</div>
+
+<h3>Radio Buttons</h3>
+<div class="button-group">
+  <input id="status-off" type="radio" ng-model="status" value="off">
+  <label for="status-off"> Off </label>
+  <input id="status-manual" type="radio" ng-model="status" value="manual">
+  <label for="status-manual"> Manual </label>
+  <input id="status-auto" type="radio" ng-model="status" value="status">
+  <label for="status-auto"> Auto </label>
 </div>

@@ -27,3 +27,46 @@
     }
   }
 }
+
+.button-group {
+  // reset the encore-ui framework styles
+  display: block;
+  border: 0;
+  border-radius: 0;
+  font-size: 1em;
+
+  .button, label {
+    display: inline-block;
+    margin-bottom: 0;
+    color: @cyan-700;
+    background: @white;
+    border: @rxButton-button-group-border;
+
+    &:hover {
+      color: @cyan-900;
+      background: #e4f9f9;
+    }
+
+    &:first-of-type {
+      border-top-left-radius: @rxButton-button-group-border-radius;
+      border-bottom-left-radius: @rxButton-button-group-border-radius;
+    }
+
+    &:last-of-type {
+      border-top-right-radius: @rxButton-button-group-border-radius;
+      border-bottom-right-radius: @rxButton-button-group-border-radius;
+    }
+
+    &:not(:last-of-type) {
+      border-right: 0;
+    }
+  }
+
+  .button:not(:last-of-type) {
+    margin-right: -4px;
+  }
+
+  & input:checked + label {
+    background: @rxButton-default-background-color;
+  }
+}
