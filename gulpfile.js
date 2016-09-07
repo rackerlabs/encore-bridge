@@ -10,6 +10,7 @@ const htmlmin = require('gulp-htmlmin');
 const insert = require('gulp-insert');
 const less = require('gulp-less');
 const merge = require('merge2');
+const ngAnnotate = require('gulp-ng-annotate');
 const vinylFs = require('vinyl-fs');
 
 const config = require('./config.json');
@@ -57,6 +58,7 @@ gulp.task('build:scripts', function () {
   merge(buildScripts(), buildTemplates())
   .pipe(concat('encore-bridge.js'))
   .pipe(insert.prepend("angular.module('encore.bridge', ['" + modules.join("','") + "']);\n\n"))
+  .pipe(ngAnnotate())
   .pipe(gulp.dest('./demo/'));
 });
 
