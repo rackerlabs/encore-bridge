@@ -19,9 +19,13 @@
       "Tags"
     ],
     "utilities": [
+      "Session",
+      "TokenInterceptor",
+      "UnauthorizedInterceptor",
       "UtcOffsets",
       "rxAge",
       "rxDOMHelper",
+      "rxLocalStorage",
       "rxNestedElement",
       "rxSortEmptyTop",
       "rxSortUtil",
