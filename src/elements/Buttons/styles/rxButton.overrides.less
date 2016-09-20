@@ -1,4 +1,8 @@
 .button {
+  border-radius: 2px;
+  font-size: 0.875em;
+  line-height: 28px;
+  padding: 0 10px;
   text-transform: uppercase;
 
   &:active {
@@ -9,8 +13,20 @@
     outline: none;
   }
 
+  &.lg {
+    font-size: 1em;
+    line-height: 44px;
+    padding: 0 14px;
+  }
+
+  &.sm {
+    font-size: 0.75em;
+    line-height: 21px;
+    padding: 0 8px;
+  }
+
   &.secondary {
-    background: @white;
+    background: none;
     color: @rxButton-default-active-background-color;
     border: 1px solid @rxButton-default-active-background-color;
 
@@ -34,6 +50,10 @@
   border: 0;
   border-radius: 0;
   font-size: 1em;
+
+  .button {
+    border-radius: 0;
+  }
 
   .button, label {
     display: inline-block;

@@ -1422,7 +1422,7 @@ this the same font stack that Normalize.css sets for the `body`.
 .rx-app .rx-eyebrow {
   min-height: 40px;
   background: #000000;
-  padding: 0 60px;
+  padding: 0 20px;
 }
 .rx-app .rx-eyebrow .rx-nav-logo {
   padding-bottom: 0;
@@ -1518,7 +1518,7 @@ this the same font stack that Normalize.css sets for the `body`.
 }
 .rx-footer {
   height: 40px;
-  padding: 0 60px;
+  padding: 0 20px;
   background: #212121;
   color: #bdbdbd;
 }
@@ -1545,9 +1545,10 @@ h2 {
 h3 {
   font-weight: 500;
 }
-.subdued {
+.subtext {
   font-weight: 500;
   font-size: 0.813em;
+  color: #757575;
 }
 .secondary-text {
   font-size: 0.875em;
@@ -2439,6 +2440,10 @@ thead th .btn-link:focus {
   background: #757575;
 }
 .button {
+  border-radius: 2px;
+  font-size: 0.875em;
+  line-height: 28px;
+  padding: 0 10px;
   text-transform: uppercase;
 }
 .button:active {
@@ -2447,8 +2452,18 @@ thead th .btn-link:focus {
 .button:focus {
   outline: none;
 }
+.button.lg {
+  font-size: 1em;
+  line-height: 44px;
+  padding: 0 14px;
+}
+.button.sm {
+  font-size: 0.75em;
+  line-height: 21px;
+  padding: 0 8px;
+}
 .button.secondary {
-  background: #ffffff;
+  background: none;
   color: #0C7C84;
   border: 1px solid #0C7C84;
 }
@@ -2467,6 +2482,9 @@ thead th .btn-link:focus {
   border: 0;
   border-radius: 0;
   font-size: 1em;
+}
+.button-group .button {
+  border-radius: 0;
 }
 .button-group .button,
 .button-group label {
