@@ -2,10 +2,13 @@ angular.module('demoApp', [
   'ngRoute',
   'encore.bridge'
 ])
-.config(function ($routeProvider) {
+.config(function ($routeProvider, appRoutesProvider) {
   $routeProvider
   .when('/', {
     templateUrl: 'home.html'
+  })
+  .when('/components/layout', {
+    templateUrl: 'layout.docs.html'
   })
   .when('/components/rxCollapse', {
     templateUrl: 'rxCollapse.html',
@@ -49,19 +52,48 @@ angular.module('demoApp', [
   .when('/elements/Tags', {
     templateUrl: 'tags.simple.html'
   })
+  .when('/styles/color', {
+    templateUrl: 'views/color.html'
+  })
+  .when('/styles/typography', {
+    templateUrl: 'views/typography.html'
+  })
   .otherwise('/');
-})
-.run(function ($rootScope) {
-  $rootScope.components = _.chain(angular.module('encore.bridge').requires)
+
+  var components = angular.module('encore.bridge').requires
   .filter(function (mod) {
     return mod !== 'encore.ui.utilities' && mod !== 'encore.ui.elements';
   })
   .map(function (mod) {
     return _.last(mod.split('.'));
   })
-  .value();
-  $rootScope.elements = ['ActionMenu', 'Buttons', 'Forms', 'Metadata', 'Tags'];
+  var elements = ['ActionMenu', 'Buttons', 'Forms', 'Metadata', 'Tags'];
 
+  var defineRoute = _.curry(function (type, name) {
+      return {
+        linkText: name,
+        href: '#/' + type + '/' + name
+      }
+  });
+
+  appRoutesProvider.routes = [{
+    title: 'Components',
+    children: components.map(defineRoute('components'))
+  }, {
+    title: 'Elements',
+    children: elements.map(defineRoute('elements'))
+  }, {
+    title: 'Styles',
+    children: [{
+      linkText: 'Color',
+      href: '#/styles/color'
+    }, {
+      linkText: 'Typography',
+      href: '#/styles/typography'
+    }]
+  }];
+})
+.run(function ($rootScope) {
   $rootScope.$on('$routeChangeSuccess', function (event, route) {
     $rootScope.activePrimaryNavItem = route.$$route.originalPath.split('/')[1];
   });

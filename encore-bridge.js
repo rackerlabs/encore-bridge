@@ -1,6 +1,91 @@
-angular.module('encore.bridge', ['encore.ui.rxApp','encore.ui.rxCollapse','encore.ui.rxForm','encore.ui.rxPopover','encore.ui.rxRadio','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.utilities','encore.ui.elements']);
+angular.module('encore.bridge', ['encore.ui.layout','encore.ui.rxApp','encore.ui.rxCollapse','encore.ui.rxForm','encore.ui.rxPopover','encore.ui.rxRadio','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.utilities','encore.ui.elements']);
 
 angular.module('encore.ui.utilities', []);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxTimePickerUtil
+ *
+ * @description
+ * Utility service used by {@link elements.directive:rxTimePicker rxTimePicker}.
+ */
+.factory('rxTimePickerUtil', function () {
+    /**
+     * @ngdoc property
+     * @propertyOf utilities.service:rxTimePickerUtil
+     * @name modelFormat
+     * @description formatting mask for Time model/data values
+     */
+    var modelFormat = 'HH:mmZ';
+
+    /**
+     * @ngdoc property
+     * @propertyOf utilities.service:rxTimePickerUtil
+     * @name viewFormat
+     * @description formatting mask for Time view/display values
+     */
+    var viewFormat = 'HH:mm (UTCZZ)';
+
+    /**
+     * @ngdoc method
+     * @methodOf utilities.service:rxTimePickerUtil
+     * @name parseUtcOffset
+     * @param {String} stringValue string containing UTC offset
+     * @return {String} UTC Offset value
+     *
+     * @description parse offset value from given string, if present
+     *
+     * **NOTE:** Logic in this function must match the logic in
+     * the page object.
+     */
+    function parseUtcOffset (stringValue) {
+        var regex = /([-+]\d{2}:?\d{2})/;
+        var matched = stringValue.match(regex);
+        return (matched ? matched[0] : '');
+    }//parseUtcOffset()
+
+    /**
+     * @ngdoc method
+     * @methodOf utilities.service:rxTimePickerUtil
+     * @name modelToObject
+     * @param {String} stringValue time in `HH:mmZ` format
+     * @return {Object} parsed data object
+     *
+     * @description
+     * Parse the model value to fetch hour, minutes, period, and offset
+     * to populate the picker form with appropriate values.
+     */
+    function modelToObject (stringValue) {
+        var momentValue = moment(stringValue, modelFormat);
+        var offset = parseUtcOffset(stringValue);
+        var parsed = {
+            hour: '',
+            minutes: '',
+            period: 'AM',
+            offset: (_.isEmpty(offset) ? '+0000' : offset)
+        };
+
+        if (!_.isEmpty(offset)) {
+            momentValue.utcOffset(offset);
+        }
+
+        if (momentValue.isValid()) {
+            parsed.hour = momentValue.format('h');
+            parsed.minutes = momentValue.format('mm');
+            parsed.period = momentValue.format('A');
+        }
+
+        return parsed;
+    }//modelToObject()
+
+    return {
+        parseUtcOffset: parseUtcOffset,
+        modelToObject: modelToObject,
+        modelFormat: modelFormat,
+        viewFormat: viewFormat,
+    };
+});//rxTimePickerUtil
 
 angular.module('encore.ui.utilities')
 /**
@@ -362,6 +447,75 @@ angular.module('encore.ui.utilities')
 angular.module('encore.ui.utilities')
 /**
  * @ngdoc service
+ * @name utilities.service:rxLocalStorage
+ * @description
+ * A simple wrapper for injecting the global variable `localStorage`
+ * for storing values in the browser's local storage object. This service is similar to Angular's
+ * `$window` and `$document` services.  The API works the same as the W3C's
+ * specification provided at: https://html.spec.whatwg.org/multipage/webstorage.html.
+ * This service also includes helper functions for getting and setting objects.
+ *
+ * @example
+ * <pre>
+ * rxLocalStorage.setItem('Batman', 'Robin'); // no return value
+ * rxLocalStorage.key(0); // returns 'Batman'
+ * rxLocalStorage.getItem('Batman'); // returns 'Robin'
+ * rxLocalStorage.removeItem('Batman'); // no return value
+ * rxLocalStorage.setObject('hero', {name:'Batman'}); // no return value
+ * rxLocalStorage.getObject('hero'); // returns { name: 'Batman'}
+ * rxLocalStorage.clear(); // no return value
+ * </pre>
+ */
+.service('rxLocalStorage', ["$window", function ($window) {
+    var localStorage = $window.localStorage;
+    if ($window.self !== $window.top && $window.top.localStorage) {
+        localStorage = $window.top.localStorage;
+    }
+
+    this.setItem = function (key, value) {
+        localStorage.setItem(key, value);
+    };
+
+    this.getItem = function (key) {
+        return localStorage.getItem(key);
+    };
+
+    this.key = function (key) {
+        return localStorage.key(key);
+    };
+
+    this.removeItem = function (key) {
+        localStorage.removeItem(key);
+    };
+
+    this.clear = function () {
+        localStorage.clear();
+    };
+
+    this.__defineGetter__('length', function () {
+        return localStorage.length;
+    });
+
+    this.setObject = function (key, val) {
+        var value = _.isObject(val) || _.isArray(val) ? JSON.stringify(val) : val;
+        this.setItem(key, value);
+    };
+
+    this.getObject = function (key) {
+        var item = localStorage.getItem(key);
+        try {
+            item = JSON.parse(item);
+        } catch (error) {
+            return item;
+        }
+
+        return item;
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
  * @name utilities.service:rxDOMHelper
  * @description
  * A small set of functions to provide some functionality
@@ -370,7 +524,7 @@ angular.module('encore.ui.utilities')
  *
  * **NOTE:** All methods take jQuery-lite wrapped elements as arguments.
  */
-.factory('rxDOMHelper', function ($document, $window) {
+.factory('rxDOMHelper', ["$document", "$window", function ($document, $window) {
     var scrollTop = function () {
         // Safari and Chrome both use body.scrollTop, but Firefox needs
         // documentElement.scrollTop
@@ -473,7 +627,363 @@ angular.module('encore.ui.utilities')
         find: find,
         wrapAll: wrapAll
     };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc filter
+ * @name utilities.filter:rxAge
+ * @description
+ * Several filters are available to parse dates.
+ *
+ * ## Two Digit Display
+ * 1. You can just have it use the default abbreviated method and it truncates it
+ *  to the two largest units.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageHours}} &rarr; {{ageHours | rxAge}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Tue Sep 22 2015 00:44:00 GMT-0500 (CDT) → 10h 30m`
+ *
+ * ## Full Word Representation
+ * 2. You can also pass in a second value of `true` and have it expand the units
+ *  from the first letter to their full word representation.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageHours}} &rarr; {{ageHours | rxAge:true}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Tue Sep 22 2015 00:35:30 GMT-0500 (CDT) → 10 hours, 33 minutes`
+ *
+ * ## Mulitple Digits
+ * 3. Or you can pass in a number from `1` to `3` as the second value to allow for
+ *  different amounts of units.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageYears}} &rarr; {{ageYears | rxAge:3}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Sun Sep 07 2014 08:46:05 GMT-0500 (CDT) → 380d 2h 27m`
+ *
+ * ## Multiple Argument Usage
+ * 4. **OR** you can pass in a number as the second argument and `true` as the
+ *    third argument to combine these two effects.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageMonths}} &rarr; {{ageMonths | rxAge:3:true}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Thu Aug 13 2015 06:22:05 GMT-0500 (CDT) → 40 days, 4 hours, 49 minutes`
+ *
+ *
+ * **NOTE:** This component requires [moment.js](http://momentjs.com/) to parse, manipulate, and
+ * display dates which is provided by Encore Framework.
+ */
+.filter('rxAge', function () {
+    return function (dateString, maxUnits, verbose) {
+        if (!dateString) {
+            return 'Unavailable';
+        } else if (dateString === 'z') {
+            return '--';
+        }
+
+        var now = moment();
+        var date = moment(new Date(dateString));
+        var diff = now.diff(date);
+        var duration = moment.duration(diff);
+        var days = parseInt(duration.asDays(), 10);
+        var hours = parseInt(duration.asHours(), 10);
+        var mins = parseInt(duration.asMinutes(), 10);
+        var age = [];
+
+        if (_.isBoolean(maxUnits)) {
+            // if maxUnits is a boolean, then we assume it's meant to be the verbose setting
+            verbose = maxUnits;
+        } else if (!_.isBoolean(verbose)) {
+            // otherwise, if verbose isn't set, default to false
+            verbose =  false;
+        }
+
+        // This initialization has to happen AFTER verbose init so that we can
+        // use the original passed in value.
+        maxUnits = (_.isNumber(maxUnits)) ? maxUnits : 2;
+
+        var dateUnits = [days, hours - (24 * days), mins - (60 * hours)];
+        var suffixes = ['d', 'h', 'm'];
+
+        if (verbose) {
+            suffixes = [' day', ' hour', ' minute'];
+
+            _.forEach(suffixes, function (suffix, index) {
+                suffixes[index] += ((dateUnits[index] !== 1) ? 's' : '');
+            });
+        }
+
+        if (days > 0) {
+            age.push({ value: days, suffix: suffixes[0] });
+        }
+
+        if (hours > 0) {
+            age.push({ value: hours - (24 * days), suffix: suffixes[1] });
+        }
+
+        age.push({ value: mins - (60 * hours), suffix: suffixes[2] });
+
+        return _.map(age.slice(0, maxUnits), function (dateUnit, index, listOfAges) {
+            if (index === listOfAges.length - 1) {
+                return Math.round(dateUnit.value) + dateUnit.suffix;
+            } else {
+                return Math.floor(dateUnit.value) + dateUnit.suffix;
+            }
+        }).join((verbose) ? ', ' : ' ');
+    };
 });
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc parameters
+ * @name utilities.constant:UtcOffsets
+ *
+ * @description
+ * List of known UTC Offset Values
+ * See https://en.wikipedia.org/wiki/List_of_UTC_time_offsets
+ *
+ * Utility service used by {@link elements.directive:rxTimePicker rxTimePicker}.
+ */
+.constant('UtcOffsets', [
+    '-12:00',
+    '-11:00',
+    '-10:00',
+    '-09:30',
+    '-09:00',
+    '-08:00',
+    '-07:00',
+    '-06:00',
+    '-05:00',
+    '-04:30',
+    '-04:00',
+    '-03:30',
+    '-03:00',
+    '-02:00',
+    '-01:00',
+    '+00:00',
+    '+01:00',
+    '+02:00',
+    '+03:00',
+    '+03:30',
+    '+04:00',
+    '+04:30',
+    '+05:00',
+    '+05:30',
+    '+05:45',
+    '+06:00',
+    '+06:30',
+    '+07:00',
+    '+08:00',
+    '+08:30',
+    '+08:45',
+    '+09:00',
+    '+09:30',
+    '+10:00',
+    '+10:30',
+    '+11:00',
+    '+12:00',
+    '+12:45',
+    '+13:00',
+    '+14:00',
+]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:UnauthorizedInterceptor
+ * @description
+ * Simple injector which will intercept HTTP responses. If a HTTP 401 response error code is returned,
+ * the ui redirects to `/login`.
+ *
+ * @requires $q
+ * @requires @window
+ * @requires utilities.service:Session
+ *
+ * @example
+ * <pre>
+ * angular.module('encoreApp', ['encore.ui'])
+ *     .config(function ($httpProvider) {
+ *         $httpProvider.interceptors.push('UnauthorizedInterceptor');
+ *     });
+ * </pre>
+ */
+.factory('UnauthorizedInterceptor', ["$q", "$window", "Session", function ($q, $window, Session) {
+    var svc = {
+        redirectPath: function () {
+            // This brings in the entire relative URI (including the path
+            // specified in a <base /> tag), along with query params as a
+            // string.
+            // e.g https://www.google.com/search?q=woody+wood+pecker
+            // window.location.pathname = /search?q=woody+wood+pecker
+            return $window.location.pathname;
+        },
+        redirect: function (loginPath) {
+            loginPath = loginPath ? loginPath : '/login?redirect=';
+            $window.location = loginPath + encodeURIComponent(svc.redirectPath());
+        },
+        responseError: function (response) {
+            if (response.status === 401) {
+                Session.logout(); // Logs out user by removing token
+                svc.redirect();
+            }
+
+            return $q.reject(response);
+        }
+    };
+
+    return svc;
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:TokenInterceptor
+ * @description
+ * Simple $http injector which will intercept http request and inject the
+ * Rackspace Identity's token into every http request.
+ *
+ * @requires rxSession.service:Session
+ *
+ * @example
+ * <pre>
+ * angular.module('encoreApp', ['encore.ui'])
+ *     .config(function ($httpProvider) {
+ *         $httpProvider.interceptors.push('TokenInterceptor');
+ *     });
+ * </pre>
+ */
+.provider('TokenInterceptor', function () {
+    var exclusionList = this.exclusionList = [ 'rackcdn.com' ];
+
+    this.$get = ["Session", "$document", function (Session, $document) {
+        var url = $document[0].createElement('a');
+        return {
+            request: function (config) {
+                // Don't add the X-Auth-Token if the request URL matches
+                // something in exclusionList
+                // We're specifically looking at hostnames, so we have to
+                // do the `createElement('a')` trick to turn the config.url
+                // into something with a `.hostname`
+                url.href = config.url;
+                var exclude = _.some(exclusionList, function (item) {
+                    if (_.contains(url.hostname, item)) {
+                        return true;
+                    }
+                });
+
+                if (!exclude) {
+                    config.headers['X-Auth-Token'] = Session.getTokenId();
+                }
+
+                return config;
+            }
+        };
+    }];
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:Session
+ * @description
+ *
+ * Service for managing user session in encore-ui.
+ *
+ * @requires utilities.service:rxLocalStorage
+ *
+ * @example
+ * <pre>
+ * Session.getToken(); // Returns the stored token
+ * Session.storeToken(token); // Stores token
+ * Session.logout(); // Logs user off
+ * Session.isCurrent(); // Returns true/false if the token has expired.
+ * Session.isAuthenticated(); // Returns true/false if the user token is valid.
+ * </pre>
+ */
+.factory('Session', ["rxLocalStorage", function (rxLocalStorage) {
+    var TOKEN_ID = 'encoreSessionToken';
+    var session = {};
+
+    /**
+    * Dot walks the token without throwing an error.
+    * If key exists, returns value otherwise returns undefined.
+    */
+    session.getByKey = function (key) {
+        var tokenValue,
+            token = session.getToken(),
+            keys = key ? key.split('.') : undefined;
+
+        if (_.isEmpty(token) || !keys) {
+            return;
+        }
+
+        tokenValue = _.reduce(keys, function (val, key) {
+            return val ? val[key] : undefined;
+        }, token);
+
+        return tokenValue;
+    };
+
+    session.getToken = function () {
+        return rxLocalStorage.getObject(TOKEN_ID);
+    };
+
+    session.getTokenId = function () {
+        return session.getByKey('access.token.id');
+    };
+
+    session.getUserId = function () {
+        return session.getByKey('access.user.id');
+    };
+
+    session.getUserName = function () {
+        return session.getByKey('access.user.name');
+    };
+
+    session.storeToken = function (token) {
+        rxLocalStorage.setObject(TOKEN_ID, token);
+    };
+
+    session.logout = function () {
+        rxLocalStorage.removeItem(TOKEN_ID);
+    };
+
+    session.isCurrent = function () {
+        var expireDate = session.getByKey('access.token.expires');
+
+        if (expireDate) {
+            return new Date(expireDate) > _.now();
+        }
+
+        return false;
+    };
+
+    session.isAuthenticated = function () {
+        var token = session.getToken();
+        return _.isEmpty(token) ? false : session.isCurrent();
+    };
+
+    return session;
+}]);
 
 /**
  * @ngdoc overview
@@ -544,7 +1054,7 @@ angular.module('encore.ui.elements')
  * use when binding an option to the model.
  * If not provided, the tag object is used.
  */
-.directive('rxTags', function (rxDOMHelper) {
+.directive('rxTags', ["rxDOMHelper", function (rxDOMHelper) {
     return {
         templateUrl: 'templates/rxTags.html',
         restrict: 'E',
@@ -620,7 +1130,7 @@ angular.module('encore.ui.elements')
             };
         }
     };
-});
+}]);
 
 angular.module('encore.ui.elements')
 /**
@@ -769,7 +1279,7 @@ angular.module('encore.ui.elements')
  * @return {String} **IMPORTANT** returns an ISO 8601 standard time string in the
  * format of `HH:mmZ`.
  */
-.directive('rxTimePicker', function (rxTimePickerUtil, UtcOffsets) {
+.directive('rxTimePicker', ["rxTimePickerUtil", "UtcOffsets", function (rxTimePickerUtil, UtcOffsets) {
     return {
         restrict: 'E',
         require: 'ngModel',
@@ -884,7 +1394,7 @@ angular.module('encore.ui.elements')
             };
         }//link
     };
-});
+}]);
 
 angular.module('encore.ui.elements')
 /**
@@ -1279,7 +1789,7 @@ angular.module('encore.ui.elements')
  *
  * @param {Boolean=} [globalDismiss=true] - optional attribute to make menu dismissable by clicking anywhere on the page
  */
-.directive('rxActionMenu', function ($rootScope, $document) {
+.directive('rxActionMenu', ["$rootScope", "$document", function ($rootScope, $document) {
     return {
         restrict: 'E',
         transclude: true,
@@ -1328,11 +1838,11 @@ angular.module('encore.ui.elements')
             // https://github.com/angular-ui/bootstrap/blob/master/src/tooltip/tooltip.js
         }
     };
-});
+}]);
 
 angular.module('encore.ui.elements')
-.config(function ($provide) {
-  $provide.decorator('rxActionMenuDirective', function ($delegate) {
+.config(["$provide", function ($provide) {
+  $provide.decorator('rxActionMenuDirective', ["$delegate", function ($delegate) {
     // https://github.com/angular/angular.js/issues/10149
     _.each(['type', 'text'], function (key) {
       $delegate[0].$$isolateBindings[key] = {
@@ -1342,8 +1852,8 @@ angular.module('encore.ui.elements')
       };
     });
     return $delegate;
-  });
-});
+  }]);
+}]);
 
 /**
  * @ngdoc overview
@@ -1465,7 +1975,7 @@ angular.module('encore.ui.rxStatusColumn')
  * @param {String} [tooltip] The string to use for the tooltip. If omitted,
  *                           it will default to using the passed in status
  */
-.directive('rxStatusColumn', function (rxStatusMappings, rxStatusColumnIcons) {
+.directive('rxStatusColumn', ["rxStatusMappings", "rxStatusColumnIcons", function (rxStatusMappings, rxStatusColumnIcons) {
     return {
         templateUrl: 'templates/rxStatusColumn.html',
         restrict: 'A',
@@ -1505,7 +2015,7 @@ angular.module('encore.ui.rxStatusColumn')
             });
         }
     };
-});
+}]);
 
 /**
  * @ngdoc overview
@@ -1657,12 +2167,12 @@ angular.module('encore.ui.rxRadio')
 angular.module('encore.ui.rxPopover', ['encore.ui.elements'])
 
 angular.module('encore.ui.rxPopover')
-.directive('rxPopover', function (rxActionMenuDirective) {
+.directive('rxPopover', ["rxActionMenuDirective", function (rxActionMenuDirective) {
   var ddo = _.cloneDeep(rxActionMenuDirective[0]);
   return _.assign(ddo, {
     templateUrl: 'templates/rxPopover.html'
   });
-});
+}]);
 
 angular.module('encore.ui.rxForm', ['encore.ui.utilities']);
 
@@ -1717,11 +2227,11 @@ angular.module('encore.ui.rxForm')
  * ...
  * </pre>
  */
-.directive('rxSuffix', function (rxNestedElement) {
+.directive('rxSuffix', ["rxNestedElement", function (rxNestedElement) {
     return rxNestedElement({
         parent: 'rxInput'
     });
-});
+}]);
 
 angular.module('encore.ui.rxForm')
 /**
@@ -1774,11 +2284,11 @@ angular.module('encore.ui.rxForm')
  * ...
  * </pre>
  */
-.directive('rxPrefix', function (rxNestedElement) {
+.directive('rxPrefix', ["rxNestedElement", function (rxNestedElement) {
     return rxNestedElement({
         parent: 'rxInput'
     });
-});
+}]);
 
 angular.module('encore.ui.rxForm')
 /**
@@ -1832,11 +2342,11 @@ angular.module('encore.ui.rxForm')
  * ...
  * </pre>
  */
-.directive('rxInput', function (rxNestedElement) {
+.directive('rxInput', ["rxNestedElement", function (rxNestedElement) {
     return rxNestedElement({
         parent: 'rxFieldContent'
     });
-});
+}]);
 
 angular.module('encore.ui.rxForm')
 /**
@@ -1928,11 +2438,11 @@ angular.module('encore.ui.rxForm')
  * ...
  * </pre>
  */
-.directive('rxInfix', function (rxNestedElement) {
+.directive('rxInfix', ["rxNestedElement", function (rxNestedElement) {
     return rxNestedElement({
         parent: 'rxInput'
     });
-});
+}]);
 
 angular.module('encore.ui.rxForm')
 /**
@@ -2025,11 +2535,11 @@ angular.module('encore.ui.rxForm')
  * If present, `rxField` children will stack vertically rather than
  * display horizontally.
  */
-.directive('rxFormSection', function (rxNestedElement) {
+.directive('rxFormSection', ["rxNestedElement", function (rxNestedElement) {
     return rxNestedElement({
         parent: 'rxForm'
     });
-});
+}]);
 
 angular.module('encore.ui.rxForm')
 /**
@@ -2071,11 +2581,11 @@ angular.module('encore.ui.rxForm')
  * ...
  * </pre>
  */
-.directive('rxForm', function (rxNestedElement) {
+.directive('rxForm', ["rxNestedElement", function (rxNestedElement) {
     return rxNestedElement({
         restrict: 'A'
     });
-});
+}]);
 
 angular.module('encore.ui.rxForm')
 /**
@@ -2123,7 +2633,7 @@ angular.module('encore.ui.rxForm')
  * @param {Boolean=} [ng-required=false]
  * Is this field required? This will add/remove the required symbol to the left of the name.
  */
-.directive('rxFieldName', function (rxNestedElement) {
+.directive('rxFieldName', ["rxNestedElement", function (rxNestedElement) {
     return rxNestedElement({
         parent: 'rxField',
         transclude: true,
@@ -2132,7 +2642,7 @@ angular.module('encore.ui.rxForm')
         },
         templateUrl: 'templates/rxFieldName.html'
     });
-});
+}]);
 
 angular.module('encore.ui.rxForm')
 /**
@@ -2187,11 +2697,11 @@ angular.module('encore.ui.rxForm')
  * ...
  * </pre>
  */
-.directive('rxFieldContent', function (rxNestedElement) {
+.directive('rxFieldContent', ["rxNestedElement", function (rxNestedElement) {
     return rxNestedElement({
         parent: 'rxField'
     });
-});
+}]);
 
 angular.module('encore.ui.rxForm')
 /**
@@ -2240,11 +2750,11 @@ angular.module('encore.ui.rxForm')
  * ...
  * </pre>
  */
-.directive('rxField', function (rxNestedElement) {
+.directive('rxField', ["rxNestedElement", function (rxNestedElement) {
     return rxNestedElement({
         parent: 'rxFormSection'
     });
-});
+}]);
 
 /**
  * @ngdoc overview
@@ -2344,7 +2854,7 @@ angular.module('encore.ui.rxApp')
 * This is used to draw the Alpha/Beta/etc tags in page titles and in breadcrumbs. It's not
 * intended as a public directive.
 */
-.directive('rxStatusTag', function (rxStatusTags) {
+.directive('rxStatusTag', ["rxStatusTags", function (rxStatusTags) {
     return {
         template: '<span ng-if="status && validKey" class="status-tag {{ class }}">{{ text }}</span>',
         restrict: 'E',
@@ -2360,7 +2870,7 @@ angular.module('encore.ui.rxApp')
             }
         }
     };
-});
+}]);
 
 angular.module('encore.ui.rxApp')
 /**
@@ -2528,7 +3038,7 @@ angular.module('encore.ui.rxApp')
                 moveLayoutAttrib(pageDiv.attributes[i]);
             }
         },
-        controller: function ($scope, rxPageTitle) {
+        controller: ["$scope", "rxPageTitle", function ($scope, rxPageTitle) {
             $scope.$watch('title', function () {
                 rxPageTitle.setTitle($scope.title);
             });
@@ -2538,7 +3048,7 @@ angular.module('encore.ui.rxApp')
                     rxPageTitle.setTitleUnsafeStripHTML($scope.unsafeHtmlTitle);
                 }
             });
-        }
+        }]
     };
 });
 
@@ -2549,7 +3059,7 @@ angular.module('encore.ui.rxApp')
  * @restrict E
  * @description [TBD]
  */
-.directive('rxBillingSearch', function ($location, $window, encoreRoutes) {
+.directive('rxBillingSearch', ["$location", "$window", "encoreRoutes", function ($location, $window, encoreRoutes) {
     return {
         templateUrl: 'templates/rxBillingSearch.html',
         restrict: 'E',
@@ -2572,7 +3082,7 @@ angular.module('encore.ui.rxApp')
             };
         }
     };
-});
+}]);
 
 angular.module('encore.ui.rxApp')
 /**
@@ -2582,7 +3092,7 @@ angular.module('encore.ui.rxApp')
  * @description
  * Used to search accounts for Cloud Atlas
  */
-.directive('rxAtlasSearch', function ($window) {
+.directive('rxAtlasSearch', ["$window", function ($window) {
     return {
         template: '<rx-app-search placeholder="Search by username..." submit="searchAccounts"></rx-app-search>',
         restrict: 'E',
@@ -2594,7 +3104,7 @@ angular.module('encore.ui.rxApp')
             };
         }
     };
-});
+}]);
 
 angular.module('encore.ui.rxApp')
 /**
@@ -2638,7 +3148,7 @@ angular.module('encore.ui.rxApp')
  * <rx-app-nav-item ng-repeat="item in items"></rx-app-nav-item>
  * </pre>
  */
-.directive('rxAppNavItem', function ($compile, $location, $route) {
+.directive('rxAppNavItem', ["$compile", "$location", "$route", function ($compile, $location, $route) {
     var linker = function (scope, element) {
         var injectContent = function (selector, content) {
             var el = element[0].querySelector(selector);
@@ -2682,7 +3192,7 @@ angular.module('encore.ui.rxApp')
         scope: {
             item: '='
         },
-        controller: function ($scope, $location, $injector, rxVisibility, Permission, urlUtils) {
+        controller: ["$scope", "$location", "$injector", "rxVisibility", "Permission", "urlUtils", function ($scope, $location, $injector, rxVisibility, Permission, urlUtils) {
             /*
              * @description Determines whether or not a nav item should have its href prefixed
              * based on whether the `$injector` has a `NAV_ITEM_PREFIX` injectable
@@ -2806,9 +3316,9 @@ angular.module('encore.ui.rxApp')
                 }
                 // otherwise, let the default nav do it's thing
             };
-        }
+        }]
     };
-});
+}]);
 
 angular.module('encore.ui.rxApp')
 /**
@@ -3309,7 +3819,7 @@ angular.module('encore.ui.rxApp')
  * @description
  * Provides the ability to switch between account users. This directive is specific to Rackspace
  */
-.directive('rxAccountUsers', function ($location, $route, Encore, $rootScope, encoreRoutes) {
+.directive('rxAccountUsers', ["$location", "$route", "Encore", "$rootScope", "encoreRoutes", function ($location, $route, Encore, $rootScope, encoreRoutes) {
     return {
         restrict: 'E',
         templateUrl: 'templates/rxAccountUsers.html',
@@ -3387,7 +3897,7 @@ angular.module('encore.ui.rxApp')
             });
         }
     };
-});
+}]);
 
 angular.module('encore.ui.rxApp')
 /**
@@ -3396,7 +3906,7 @@ angular.module('encore.ui.rxApp')
  * @restrict E
  * @description [TBD]
  */
-.directive('rxAccountSearch', function ($window) {
+.directive('rxAccountSearch', ["$window", function ($window) {
     return {
         templateUrl: 'templates/rxAccountSearch.html',
         restrict: 'E',
@@ -3408,20 +3918,55 @@ angular.module('encore.ui.rxApp')
             };
         }
     };
-});
+}]);
 
 angular.module('encore.ui.rxApp')
-.directive('rxApp', function () {
-  return {
-    restrict: 'E',
-    transclude: true,
-    templateUrl: 'templates/rxApp.html'
+.provider('appRoutes', function () {
+  this.routes = [];
+  this.$get = function () {
+    return this.routes;
   };
 });
 
+angular.module('encore.ui.rxApp')
+.directive('rxApp', ["$window", "appRoutes", function ($window, appRoutes) {
+  return {
+    restrict: 'E',
+    transclude: true,
+    templateUrl: 'templates/rxApp.html',
+    link: function (scope) {
+      scope.routes = appRoutes;
+      scope.isEmbedded = $window.self !== $window.top;
+    }
+  };
+}]);
+
+/**
+ * @ngdoc overview
+ * @name layout
+ * @description
+ * # layout Component
+ *
+ * Encore UI includes a grid system forked from
+ * [Angular Material's layout module](https://material.angularjs.org/#/layout/container)
+ * with minor usability enhancements to provide an assortment of attribute-based
+ * layout options based on the flexbox layout model. Included are intuitive attribute
+ * based styles that ease the creation of responsive row and/or column based page layouts.
+ *
+ * ## Note About Responsive Features
+ *
+ * Two versions of the Encore UI CSS file are included in this project. One includes
+ * responsive design style attributes (encore-ui-resp-x.x.x.css). The other omits
+ * these attributes to save space if desired (encore-ui-x.x.x.css). Be sure to only
+ * include the appropriate css file for your project. Any attributes which include
+ * the following suffixes require the responsive css file to work:
+ * '-sm', '-gt-sm', '-md', '-gt-md', '-lg', '-gt-lg'.
+ */
+angular.module('encore.ui.layout', []);
+
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxApp.html',
-    '<div class="rx-app"><div class="rx-eyebrow"><ul class="rx-nav pull-left"><li class="rx-nav-item"><a href="#"><span class="rackspace-logo-bw"></span></a></li><li class="rx-nav-item"><rx-action-menu text="MyRackspace"><ul class="actions-area"></ul></rx-action-menu></li></ul><ul class="rx-nav pull-right"><li class="rx-nav-item"><a href="https://my.rackspace.com/portal/feedback/index">Feedback</a></li><li class="rx-nav-item"><a href="https://my.rackspace.com/portal/ticket/create">Feedback</a></li><li class="rx-nav-item"><a href="#">Contact Support</a></li><li class="rx-nav-item"><rx-action-menu class="account-menu" text="Barbra Streisand"><ul class="actions-area"><li><div>Account: 123456</div><div>Company ABC</div></li><li class="divider"></li><li><a href="#">Notifications<div class="caption">Incidents, maintenances, etc.</div></a></li><li><a href="#">Support Tickets<div class="caption">Your support questions</div></a></li><li class="divider"></li><li><a href="#">Profile Settings</a></li><li><a href="#">Logout</a></li></ul></rx-action-menu></li></ul></div><div class="rx-nav-primary"><ul class="rx-nav"><li class="rx-nav-item" ng-class="{\'active\': activePrimaryNavItem === \'components\'}"><rx-action-menu text="Components" type="utility"><ul class="actions-area"><li ng-repeat="component in components"><a class="rs-dropdown-link" ng-href="#/components/{{component}}">{{component}}</a></li></ul></rx-action-menu></li><li class="rx-nav-item" ng-class="{\'active\': activePrimaryNavItem === \'elements\'}"><rx-action-menu text="Elements" type="utility"><ul class="actions-area"><li ng-repeat="element in elements"><a class="rs-dropdown-link" ng-href="#/elements/{{element}}">{{element}}</a></li></ul></rx-action-menu></li></ul></div><div ng-transclude></div><div class="rx-push"></div></div><div class="rx-footer"><ul class="rx-nav"><li class="rx-nav-item">&copy; Rackspace, US</li><li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a></li><li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a></li></ul></div>');
+    '<div class="rx-app" ng-class="{embedded: isEmbedded}"><div class="rx-eyebrow" ng-show="!isEmbedded"><ul class="rx-nav pull-left"><li class="rx-nav-item rx-nav-logo"><a href="#"><span class="rackspace-logo-bw"></span></a></li><li class="rx-nav-item"><rx-action-menu text="MyRackspace"><ul class="actions-area"></ul></rx-action-menu></li></ul><ul class="rx-nav pull-right"><li class="rx-nav-item"><a href="https://my.rackspace.com/portal/feedback/index">Feedback</a></li><li class="rx-nav-item"><a href="https://my.rackspace.com/portal/ticket/create">Create Ticket</a></li><li class="rx-nav-item"><a href="#">Contact Support</a></li><li class="rx-nav-item"><rx-action-menu class="account-menu" text="Barbra Streisand"><ul class="actions-area"><li><div>Account: 123456</div><div>Company ABC</div></li><li class="divider"></li><li><a href="#">Notifications<div class="caption">Incidents, maintenances, etc.</div></a></li><li><a href="#">Support Tickets<div class="caption">Your support questions</div></a></li><li class="divider"></li><li><a href="#">Profile Settings</a></li><li><a href="#">Logout</a></li></ul></rx-action-menu></li></ul></div><div class="rx-nav-primary" ng-if="routes.length > 0 && !isEmbedded"><ul class="rx-nav"><li class="rx-nav-item" ng-repeat="route in routes" ng-class="{\'active\': activePrimaryNavItem === \'components\'}"><rx-action-menu text="{{route.title}}" type="utility" ng-if="route.children && route.children.length > 0"><ul class="actions-area"><li ng-repeat="navItem in route.children"><a class="rs-dropdown-link" ng-href="{{navItem.href}}">{{navItem.linkText}}</a></li></ul></rx-action-menu><a ng-if="!route.children" ng-href="{{route.href}}">{{route.title}}</a></li></ul></div><div ng-transclude></div><div class="rx-push" ng-show="!isEmbedded"></div></div><div class="rx-footer" ng-show="!isEmbedded"><ul class="rx-nav"><li class="rx-nav-item">&copy; Rackspace, US</li><li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a></li><li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a></li></ul></div>');
 }]);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {

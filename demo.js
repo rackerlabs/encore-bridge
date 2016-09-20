@@ -1,4 +1,27 @@
 angular.module('demoApp')
+.controller('layoutController', function ($scope) {
+    $scope.layout = 'row';
+    $scope.align = { first: 'center', second: 'middle' };
+    $scope.options1 = ['left', 'center', 'right', 'spread', 'justify'];
+    $scope.options2 = ['top', 'middle', 'bottom', 'stretch'];
+
+    // Swap the first 3 items in each array and set new value
+    $scope.swap = function (option) {
+
+        if ($scope.layout === option) {
+            return;
+        }
+
+        var swap = $scope.options2.slice(0, 3).concat($scope.options1.slice(3));
+        $scope.options2 = $scope.options1.slice(0, 3).concat($scope.options2.slice(3));
+        $scope.options1 = swap;
+        swap = $scope.options1[$scope.options1.indexOf($scope.align.second)] || 'spread';
+        $scope.align.second = $scope.options2[$scope.options2.indexOf($scope.align.first)] || 'stretch';
+        $scope.align.first = swap;
+    };
+});
+
+angular.module('demoApp')
 .controller('rxAppCtrl', function ($scope, $location, $rootScope, $window, encoreRoutes, rxVisibility, Session) {
     Session.getUserId = function () {
         return 'bert3000';
@@ -625,6 +648,34 @@ angular.module('demoApp')
 });
 
 angular.module('demoApp')
+.controller('SessionSimpleCtrl', function ($scope, $window, Session) {
+    $scope.isAuthenticated = function () {
+        $window.alert(Session.isAuthenticated());
+    };
+});
+
+angular.module('demoApp')
+.controller('rxAgeCtrl', function ($scope) {
+    var day = 1000 * 60 * 60 * 24;
+    $scope.ageHours = new Date((Date.now() - (day / 2.3))).toString();
+    $scope.ageDays = new Date((Date.now() - (day * 1.5))).toString();
+    $scope.ageMonths = new Date((Date.now() - (day * 40.2))).toString();
+    $scope.ageYears = new Date((Date.now() - (day * 380.1))).toString();
+});
+
+angular.module('demoApp')
+.controller('rxLocalStorageSimpleCtrl', function ($scope, $window, rxLocalStorage) {
+    $scope.setSideKick = function () {
+        rxLocalStorage.setObject('joker', { name: 'Harley Quinn' });
+    };
+
+    $scope.getSideKick = function () {
+        var sidekick = rxLocalStorage.getObject('joker');
+        $window.alert(sidekick.name);
+    };
+});
+
+angular.module('demoApp')
 .controller('rxSortEmptyTopSimpleCtrl', function ($scope, PageTracking, rxSortUtil) {
     $scope.sort = rxSortUtil.getDefault('name');
     $scope.sort = rxSortUtil.getDefault('name', false);
@@ -685,6 +736,23 @@ angular.module('demoApp')
     rxStatusMappings.addAPI('fooApi', { 'DELETING': 'PENDING' });
     rxStatusMappings.mapToPending('SomeApiSpecificStatus', 'fooApi');
 });
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('layout.docs.html',
+    '<h3 class="clear">Two u-1-2 modules</h3><div class="pure-g clear"><div class="pure-u-1-2"><table class="table"><thead><th>Header 1</th></thead><tbody><tr><td>Cell 1</td></tr></tbody></table></div><div class="pure-u-1-2"><table class="table"><thead><th>Header 1</th></thead><tbody><tr><td>Cell 1</td></tr></tbody></table></div></div><h3>Three u-1-3 modules</h3><div class="pure-g clear"><div class="pure-u-1-3"><table class="table"><thead><th>Header 1</th></thead><tbody><tr><td>Cell 1</td></tr></tbody></table></div><div class="pure-u-1-3"><table class="table"><thead><th>Header 1</th></thead><tbody><tr><td>Cell 1</td></tr></tbody></table></div><div class="pure-u-1-3"><table class="table"><thead><th>Header 1</th></thead><tbody><tr><td>Cell 1</td></tr></tbody></table></div></div><h3>Two u-1-2 modules with a columns class</h3><div class="pure-g columns clear"><div class="pure-u-1-2"><table class="table"><thead><th>Header 1</th></thead><tbody><tr><td>Cell 1</td></tr></tbody></table></div><div class="pure-u-1-2"><table class="table"><thead><th>Header 1</th></thead><tbody><tr><td>Cell 1</td></tr></tbody></table></div></div><h3>Three u-1-3 modules with a columns class</h3><div class="pure-g columns clear"><div class="pure-u-1-3"><table class="table"><thead><th>Header 1</th></thead><tbody><tr><td>Cell 1</td></tr></tbody></table></div><div class="pure-u-1-3"><table class="table"><thead><th>Header 1</th></thead><tbody><tr><td>Cell 1</td></tr></tbody></table></div><div class="pure-u-1-3"><table class="table"><thead><th>Header 1</th></thead><tbody><tr><td>Cell 1</td></tr></tbody></table></div></div>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('responsiveLayout.html',
+    '<div class="layout-demo"><!-- Overview --> <a id="Overview"></a><h2>Overview</h2><p>Angular Material\'s responsive CSS layout is built on <a href="http://www.w3.org/TR/css3-flexbox/" target="_blank">flexbox.</a></p><p>The layout system is based upon element attributes rather than CSS classes. Attributes provide an easy way to set a value (eg <code>layout="row"</code>) and help separate concerns: attributes define layout, and classes define styling.</p><!-- Layout Attribute --> <a id="Attribute"></a><h2>Layout Attribute</h2><p>Use the <code>layout</code> attribute on an element to arrange its children horizontally in a row (<code>layout="row"</code>), or vertically in a column (<code>layout="column"</code>).</p><h3>Row Layout</h3><div layout="row"><div class="box dark-blue">I\'m left.</div><div class="box light-blue">I\'m right.</div></div><h3>Column Layout</h3><div layout="column"><div class="box dark-blue">I\'m above.</div><div class="box light-blue">I\'m below.</div></div><p>See <a href="#/components/layout#Options">Options</a> for information on responsive layouts and other options.</p><!-- Grid System--> <a id="Grid"></a><h2>Grid System</h2><p>To customize the size and position of elements in a layout, use the <code>flex</code>, <code>flex-offset</code>, and <code>flex-order</code> attributes.</p><h3>Flex Attribute</h3><div layout="row"><div flex class="flex-box dark-blue">[flex]</div><div flex class="flex-box light-blue">[flex]</div><div flex class="flex-box dark-green">[flex]</div></div><p>Add the <code>flex</code> attribute to a layout\'s child element, and it will flex (stretch) to fill the available area.</p><h3>Flex Percent Values</h3><div layout="row" layout-wrap><div flex="33" class="flex-box dark-blue">[flex="33"]</div><div flex="55" class="flex-box light-blue">[flex="55"]</div><div flex class="flex-box orange">[flex]</div><div flex="66" class="flex-box light-green">[flex="66"]</div><div flex="33" class="flex-box dark-green">[flex="33"]</div></div><p>A layout child\'s <code>flex</code> attribute can be given an integer value from 0-100. The element will stretch to the percentage of available space matching the value.</p><p>The <code>flex</code> attribute value is restricted to 33, 66, and multiples of five. For example: <code>flex="5"</code>, <code>flex="20"</code>, "<code>flex="33"</code>, <code>flex="50"</code>, <code>flex="66"</code>, <code>flex="75"</code>, ....</p><p>See the <a href="#/components/layout#Options">layout options</a> for more information on responsive flex attributes.</p><h3>Static Flex Options</h3><div layout="row"><div flex class="flex-fix flex-box dark-blue">flex: 0 0 200px;</div><div flex="55" class="flex-box light-blue">[flex="55"]</div><div flex class="flex-box orange">[flex]</div></div><p>CSS <code>flexbox</code> implementation provides the ability to define static flex items that will cooperate alongside dynamic flex items.</p><p>A static flex item has the following property definition:</p><pre>\n' +
+    '    flex-grow: 0; // do not grow\n' +
+    '    flex-shrink: 0; // do not shrink\n' +
+    '    flex-basis: N; // set height/width to this value (depending on the value of flex-direction)\n' +
+    '\n' +
+    '    /* or using the shorthand */\n' +
+    '    flex: 0 0 N; // [ grow | shrink | basis ]\n' +
+    '    </pre><p><code>flex-basis</code> value may be a valid CSS <a href="http://www.w3.org/TR/css3-values/#lengths">length</a> or keyword.</p><h3>Flex Order Attribute</h3><div layout="row" layout-margin><div flex flex-order="3" class="flex-box dark-blue margin-left">[flex-order="3"]</div><div flex flex-order="2" class="flex-box light-blue margin-right margin-left">[flex-order="2"]</div><div flex flex-order="1" class="flex-box dark-green margin-right">[flex-order="1"]</div></div><p>Add the <code>flex-order</code> attribute to a layout child to set its position within the layout. Any value from 0-9 is accepted.</p><p>Note that the <code>flex-order</code> attribute is not compatible with the <code>layout-margin</code> attribute. This is because the CSS selector engine selects based on DOM markup order and the <code>layout-margin</code> attribute makes use of <code>:first-child</code> and <code>:last-child</code> to apply margins to only the inner elements in the container. As a work-around, <code>[flex-order].left-margin</code> and <code>[flex-order].right-margin</code> classes are availabe to manually add margins. The most likely use cases for these classes is for programmatic ordering of children.</p><table><tr><td>flex-order</td><td>Sets element order.</td></tr><tr><td>flex-order-sm</td><td>Sets element order on devices less than 600px wide.</td></tr><tr><td>flex-order-gt-sm</td><td>Sets element order on devices greater than 600px wide.</td></tr><tr><td>flex-order-md</td><td>Sets element order on devices between 600px and 960px wide.</td></tr><tr><td>flex-order-gt-md</td><td>Sets element order on devices greater than 960px wide.</td></tr><tr><td>flex-order-lg</td><td>Sets element order on devices between 960px and 1200px wide.</td></tr><tr><td>flex-order-gt-lg</td><td>Sets element order on devices greater than 1200px wide.</td></tr></table><h3>Flex Offset Attribute</h3><div layout="row"><div flex flex-offset="33" class="flex-box dark-blue">[flex offset="33"]</div><div flex class="flex-box light-blue">[flex]</div></div><p>Add the <code>offset</code> attribute to a layout child to set its offset percentage within the layout. Values must be multiples of <code>5</code>, or <code>33</code>, <code>34</code>, <code>66</code>, <code>67</code>.</p><table><tr><td>offset</td><td>Sets element offset.</td></tr><tr><td>offset-sm</td><td>Sets element offset on devices less than 600px wide.</td></tr><tr><td>offset-gt-sm</td><td>Sets element offset on devices greater than 600px wide.</td></tr><tr><td>offset-md</td><td>Sets element offset on devices between 600px and 960px wide.</td></tr><tr><td>offset-gt-md</td><td>Sets element offset on devices greater than 960px wide.</td></tr><tr><td>offset-lg</td><td>Sets element offset on devices between 960px and 1200px wide.</td></tr><tr><td>offset-gt-lg</td><td>Sets element offset on devices greater than 1200px wide.</td></tr></table><!-- Child Alignment --> <a id="ChildAlignment"></a><h2>Child Alignment</h2><p>The <code>layout-align</code> attribute takes two parameters in any order. Parameters <code>top</code>, <code>middle</code>, <code>bottom</code>, <code>left</code>, <code>right</code>, and <code>center</code> determine the alignment of child elements and may be combined in sensible ways (ie <code>top left</code> works but <code>top bottom</code> would not).</p><p>Parameters <code>stretch</code>, <code>justify</code>, and <code>spread</code> determine the justification of child elements. <code>Stretch</code> grows child elements perpendicular to layout axis (ie <code>layout="row"</code> stretches up and down). <code>Justify</code> and <code>spread</code> space out child elements evenly perpendicular to layout axis either with or without side padding, respectively</p><p>Only one parameter is required for the attribute. For example, <code>layout="row" layout-align="center"</code> would make the elements center horizontally and use the default behavior vertically.</p><p><code>layout="column" layout-align="right middle"</code> would align children along the center vertically and along the right horizontally.</p><table><tr><td>layout-align</td><td>Sets child alignment.</td></tr><tr><td>layout-align-sm</td><td>Sets child alignment on devices less than 600px wide.</td></tr><tr><td>layout-align-gt-sm</td><td>Sets child alignment on devices greater than 600px wide.</td></tr><tr><td>layout-align-md</td><td>Sets child alignment on devices between 600px and 960px wide.</td></tr><tr><td>layout-align-gt-md</td><td>Sets child alignment on devices greater than 960px wide.</td></tr><tr><td>layout-align-lg</td><td>Sets child alignment on devices between 960px and 1200px wide.</td></tr><tr><td>layout-align-gt-lg</td><td>Sets child alignment on devices greater than 1200px wide.</td></tr></table><div ng-controller="layoutController"><p>See below for more examples: <code>layout="{{layout}}" layout-align="{{align.first}} {{align.second}}"</code></p><div layout="{{layout}}" layout-align="{{align.first}} {{align.second}}" class="small-box-container"><div class="small-box light-blue">one</div><div class="small-box dark-blue">two</div><div class="small-box light-green">three</div></div><div class="layout-examples" layout="row" layout-align="top spread"><div layout="column"><span>Layout Direction</span><label><input type="radio" ng-model="layout" value="row" ng-click="swap(\'row\')"> row</label><label><input type="radio" ng-model="layout" value="column" ng-click="swap(\'column\')"> column</label></div><div layout="column"><span>Alignment in Layout Direction</span><label ng-repeat="option in options1" for="{{align1}}"><input type="radio" name="align1" ng-model="align.first" ng-value="option"> {{option}}</label></div><div layout="column"><span>Alignment in Perpendicular Direction</span><label ng-repeat="option in options2" for="{{align2}}"><input type="radio" name="align2" ng-model="align.second" ng-value="option"> {{option}}</label></div></div></div><!-- Options --> <a id="Options"></a><h2>Options</h2><h3>Responsive Layout</h3><div layout="row" layout-sm="column"><div flex class="grow-box dark-blue">I\'m above on mobile, and to the left on larger devices.</div><div flex class="grow-box light-blue">I\'m below on mobile, and to the right on larger devices.</div></div><p>See the <a href="#/components/layout#Attribute">Attribute</a> section for a basic explanation of layout attributes.</p><p>To make your layout change depending upon the device size, there are other <code>layout</code> attributes available:</p><table><tr><td>layout</td><td>Sets the default layout on all devices.</td></tr><tr><td>layout-sm</td><td>Sets the layout on devices less than 600px wide (phones).</td></tr><tr><td>layout-gt-sm</td><td>Sets the layout on devices greater than 600px wide (bigger than phones).</td></tr><tr><td>layout-md</td><td>Sets the layout on devices between 600px and 960px wide (tablets in portrait).</td></tr><tr><td>layout-gt-md</td><td>Sets the layout on devices greater than 960px wide (bigger than tablets in portrait).</td></tr><tr><td>layout-lg</td><td>Sets the layout on devices between 960 and 1200px wide (tablets in landscape).</td></tr><tr><td>layout-gt-lg</td><td>Sets the layout on devices greater than 1200px wide (computers and large screens).</td></tr></table><h3>Layout Margin, Padding, and Fill</h3><div layout="row" layout-margin layout-fill layout-padding><div flex class="grow-box dark-blue">I\'m on the left, and there\'s an empty area around me.</div><div flex class="grow-box light-blue">I\'m on the right, and there\'s an empty area around me.</div></div><p><code>layout-margin</code> adds margin around each <code>flex</code> child. It also adds a margin to the layout container itself.</p><p><code>layout-padding</code> adds padding inside each <code>flex</code> child. It also adds padding to the layout container itself.</p><p><code>layout-fill</code> forces the layout element to fill its parent container.</p><h3>Wrap</h3><div layout="row" layout-wrap><div flex="33" class="grow-box dark-blue">[flex=33]</div><div flex="66" class="grow-box light-blue">[flex=66]</div><div flex="66" class="grow-box light-green">[flex=66]</div><div flex="33" class="grow-box dark-green">[flex=33]</div></div><p><code>layout-wrap</code> allows <code>flex</code> children to wrap within the container if the elements use more than 100%. By default, flex elements do not wrap.</p><h3>Responsive Flex &amp; Offset Attributes</h3><div layout="row"><div flex="66" flex-sm="33" class="grow-box dark-blue">I flex to one-third of the space on mobile, and two-thirds on other devices.</div><div flex="33" flex-sm="66" class="grow-box light-blue">I flex to two-thirds of the space on mobile, and one-third on other devices.</div></div><p>See the <a href="#/components/layout#Grid">Grid</a> section for a basic explanation of flex and offset attributes.</p><table><tr><td>flex</td><td>Sets flex.</td></tr><tr><td>flex-sm</td><td>Sets flex on devices less than 600px wide.</td></tr><tr><td>flex-gt-sm</td><td>Sets flex on devices greater than 600px wide.</td></tr><tr><td>flex-md</td><td>Sets flex on devices between 600px and 960px wide..</td></tr><tr><td>flex-gt-md</td><td>Sets flex on devices greater than 960px wide.</td></tr><tr><td>flex-lg</td><td>Sets flex on devices between 960px and 1200px.</td></tr><tr><td>flex-gt-lg</td><td>Sets flex on devices greater than 1200px wide.</td></tr></table><h3>Hide and Show Attributes</h3><div layout layout-align="center center" class="small-box-container"><div hide-sm class="grow-box dark-blue">I\'m hidden on mobile and shown on larger devices.</div><div hide-gt-sm class="grow-box dark-green">I\'m shown on mobile and hidden on larger devices.</div></div><table><tr><td>hide</td><td><code>display: none</code></td></tr><tr><td>hide-sm</td><td><code>display: none</code> on devices less than 600px wide.</td></tr><tr><td>hide-gt-sm</td><td><code>display: none</code> on devices greater than 600px wide.</td></tr><tr><td>hide-md</td><td><code>display: none</code> on devices between 600px and 960px wide.</td></tr><tr><td>hide-gt-md</td><td><code>display: none</code> on devices greater than 960px wide.</td></tr><tr><td>hide-lg</td><td><code>display: none</code> on devices between 960px and 1200px.</td></tr><tr><td>hide-gt-lg</td><td><code>display: none</code> on devices greater than 1200px wide.</td></tr><tr><td>show</td><td>Negates hide.</td></tr><tr><td>show-sm</td><td>Negates hide on devices less than 600px wide.</td></tr><tr><td>show-gt-sm</td><td>Negates hide on devices greater than 600px wide.</td></tr><tr><td>show-md</td><td>Negates hide on devices between 600px and 960px wide..</td></tr><tr><td>show-gt-md</td><td>Negates hide on devices greater than 960px wide.</td></tr><tr><td>show-lg</td><td>Negates hide on devices between 960px and 1200px.</td></tr><tr><td>show-gt-lg</td><td>Negates hide on devices greater than 1200px wide.</td></tr></table></div>');
+}]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
   $templateCache.put('rxApp.html',
@@ -752,7 +820,7 @@ angular.module('demoApp').run(['$templateCache', function($templateCache) {
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
   $templateCache.put('Buttons.docs.html',
-    '<h1>Primary Buttons</h1><div class="button-group"><button class="button lg">Default Large</button> <button class="button lg" disabled="disabled">Disabled Large</button></div><div class="button-group"><button class="button">Default Medium</button> <button class="button" disabled="disabled">Disabled Medium</button></div><div class="button-group"><button class="button sm">Default Small</button> <button class="button sm" disabled="disabled">Disabled Small</button></div><h1 style="padding-top:40px">Secondary Buttons</h1><div class="button-group"><button class="button lg secondary">Default Large</button> <button class="button lg" disabled="disabled">Disabled Large</button></div><div class="button-group"><button class="button secondary">Default Medium</button> <button class="button" disabled="disabled">Disabled Medium</button></div><div class="button-group"><button class="button sm secondary">Default Small</button> <button class="button sm" disabled="disabled">Disabled Small</button></div>');
+    '<h1>Primary Buttons</h1><div id="primary-large"><button class="button lg">Default Large</button> <button class="button lg" disabled="disabled">Disabled Large</button></div><div><button class="button">Default Medium</button> <button class="button" disabled="disabled">Disabled Medium</button></div><div><button class="button sm">Default Small</button> <button class="button sm" disabled="disabled">Disabled Small</button></div><h1 style="padding-top:40px">Secondary Buttons</h1><div id="secondary-large"><button class="button lg secondary">Default Large</button> <button class="button lg" disabled="disabled">Disabled Large</button></div><div><button class="button secondary">Default Medium</button> <button class="button" disabled="disabled">Disabled Medium</button></div><div><button class="button sm secondary">Default Small</button> <button class="button sm" disabled="disabled">Disabled Small</button></div><h1 style="padding-top:40px">Button Groups</h1><h3>Simple Buttons</h3><div class="button-group"><button class="button">One</button> <button class="button">Two</button> <button class="button">Three</button></div><h3>Radio Buttons</h3><div class="button-group"><input id="status-off" type="radio" ng-model="status" value="off"><label for="status-off">Off</label><input id="status-manual" type="radio" ng-model="status" value="manual"><label for="status-manual">Manual</label><input id="status-auto" type="radio" ng-model="status" value="status"><label for="status-auto">Auto</label></div>');
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
@@ -903,8 +971,53 @@ angular.module('demoApp').run(['$templateCache', function($templateCache) {
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('Session.docs.html',
+    '<p>Manages a user session.</p><rx-example name="Session.simple"></rx-example>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('Session.simple.html',
+    '<div ng-controller="SessionSimpleCtrl"><button ng-click="isAuthenticated()" class="button">Are You Authenticated?</button></div>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('TokenInterceptor.docs.html',
+    '<p>Adds an authorization token to all HTTP requests. This allows access to system services for authenticated users.</p>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('UnauthorizedInterceptor.docs.html',
+    '<p>Redirects users to the login page, when user authentication fails during a system service request.</p>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('UtcOffsets.demo.html',
+    '<p>List of known UTC Offset Values as found at <a href="https://en.wikipedia.org/wiki/List_of_UTC_time_offsets" target="_blank">https://en.wikipedia.org/wiki/List_of_UTC_time_offsets </a>.</p>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('rxAge.docs.html',
+    '<p><code>rxAge</code> provides several filters to parse dates.</p><rx-example name="rxAge.demo"></rx-example>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('rxAge.demo.html',
+    '<div ng-controller="rxAgeCtrl" id="rxAge-demo"><ol class="list"><li>{{ageHours}} &rarr; {{ageHours | rxAge}}</li><li>{{ageDays}} &rarr; {{ageDays | rxAge}}</li><li>{{ageMonths}} &rarr; {{ageMonths | rxAge}}</li><li>{{ageYears}} &rarr; {{ageYears | rxAge}}</li><li>{{ageHours}} &rarr; {{ageHours | rxAge:true}}</li><li>{{ageDays}} &rarr; {{ageDays | rxAge:true}}</li><li>{{ageMonths}} &rarr; {{ageMonths | rxAge:true}}</li><li>{{ageYears}} &rarr; {{ageYears | rxAge:true}}</li><li>{{ageHours}} &rarr; {{ageHours | rxAge:1:true}}</li><li>{{ageDays}} &rarr; {{ageDays | rxAge:2:true}}</li><li>{{ageMonths}} &rarr; {{ageMonths | rxAge:3:true}}</li><li>{{ageYears}} &rarr; {{ageYears | rxAge:3:true}}</li></ol></div>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
   $templateCache.put('rxDOMHelper.docs.html',
     '<p>A small set of useful DOM-related functions.</p>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('rxLocalStorage.docs.html',
+    '<p>Simple wrapper for interacting with local storage in the browser.</p><h3>Simple Example</h3><p>Select <code>Store Answer</code>, then <code>Answer?</code> to first store the answer in the browser\'s <code>localStorage</code> object and later retrieve the stored content.</p><rx-example name="rxLocalStorage.simple"></rx-example>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('rxLocalStorage.simple.html',
+    '<div ng-controller="rxLocalStorageSimpleCtrl"><label>Who is the Joker\'s side kick?</label><button ng-click="setSideKick()" class="button button-positive">Store Answer</button> <button ng-click="getSideKick()" class="button">Answer?</button></div>');
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
@@ -940,4 +1053,9 @@ angular.module('demoApp').run(['$templateCache', function($templateCache) {
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
   $templateCache.put('rxStatusMappings.simple.html',
     '<div ng-controller="rxStatusMappingsSimpleCtrl"><p><strong>Tip:</strong> Hover over each status to see pop-up status value.</p><table class="table-striped demo-status-column-table"><thead><tr><th rx-status-header>Status</th><th class="column-title">Title</th></tr></thead><tbody><tr ng-repeat="server in servers | orderBy: sort.predicate:sort.reverse "><!-- Both `api` and `tooltip-content` are optional --><td rx-status-column status="{{ server.status }}" api="{{ server.api }}" tooltip-content="{{ server.status }}"></td><td>{{ server.title }}</td></tr></tbody></table></div>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('rxTimePickerUtil.demo.html',
+    '<p>Utility service used by <a href="#/elements/Forms#time-picker">rxTimePicker</a>.</p>');
 }]);

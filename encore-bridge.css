@@ -433,7 +433,7 @@ th {
 html,
 body {
   height: 100%;
-  font-size: 13px;
+  font-size: 16px;
   color: #424242;
   font-family: "Roboto", sans-serif;
 }
@@ -476,12 +476,12 @@ p {
 }
 a {
   text-decoration: none;
-  color: #0D74D1;
+  color: #0E94A6;
 }
 a:hover,
 a:focus {
   text-decoration: underline;
-  color: #0075de;
+  color: #16B9D4;
 }
 table {
   clear: both;
@@ -1122,14 +1122,310 @@ body:hover .visually-hidden button {
 [flex-offset="67"] {
   margin-left: 66.66%;
 }
+/*!
+Pure v0.6.0
+Copyright 2014 Yahoo! Inc. All rights reserved.
+Licensed under the BSD License.
+https://github.com/yahoo/pure/blob/master/LICENSE.md
+*/
+/*csslint regex-selectors:false, known-properties:false, duplicate-properties:false*/
+
+.pure-g {
+    letter-spacing: -0.31em; /* Webkit: collapse white-space between units */
+    *letter-spacing: normal; /* reset IE < 8 */
+    *word-spacing: -0.43em; /* IE < 8: collapse white-space between units */
+    text-rendering: optimizespeed; /* Webkit: fixes text-rendering: optimizeLegibility */
+
+    /*
+    Sets the font stack to fonts known to work properly with the above letter
+    and word spacings. See: https://github.com/yahoo/pure/issues/41/
+
+    The following font stack makes Pure Grids work on all known environments.
+
+    * FreeSans: Ships with many Linux distros, including Ubuntu
+
+    * Arimo: Ships with Chrome OS. Arimo has to be defined before Helvetica and
+      Arial to get picked up by the browser, even though neither is available
+      in Chrome OS.
+
+    * Droid Sans: Ships with all versions of Android.
+
+    * Helvetica, Arial, sans-serif: Common font stack on OS X and Windows.
+    */
+    font-family: FreeSans, Arimo, "Droid Sans", Helvetica, Arial, sans-serif;
+
+    /*
+    Use flexbox when possible to avoid `letter-spacing` side-effects.
+
+    NOTE: Firefox (as of 25) does not currently support flex-wrap, so the
+    `-moz-` prefix version is omitted.
+    */
+
+    display: -webkit-flex;
+    -webkit-flex-flow: row wrap;
+
+    /* IE10 uses display: flexbox */
+    display: -ms-flexbox;
+    -ms-flex-flow: row wrap;
+    
+    /* Prevents distributing space between rows */
+    -ms-align-content: flex-start;
+	-webkit-align-content: flex-start;
+	align-content: flex-start;
+}
+
+/* Opera as of 12 on Windows needs word-spacing.
+   The ".opera-only" selector is used to prevent actual prefocus styling
+   and is not required in markup.
+*/
+.opera-only :-o-prefocus,
+.pure-g {
+    word-spacing: -0.43em;
+}
+
+.pure-u {
+    display: inline-block;
+    *display: inline; /* IE < 8: fake inline-block */
+    zoom: 1;
+    letter-spacing: normal;
+    word-spacing: normal;
+    vertical-align: top;
+    text-rendering: auto;
+}
+
+/*
+Resets the font family back to the OS/browser's default sans-serif font,
+this the same font stack that Normalize.css sets for the `body`.
+*/
+.pure-g [class *= "pure-u"] {
+    font-family: sans-serif;
+}
+
+.pure-u-1,
+.pure-u-1-1,
+.pure-u-1-2,
+.pure-u-1-3,
+.pure-u-2-3,
+.pure-u-1-4,
+.pure-u-3-4,
+.pure-u-1-5,
+.pure-u-2-5,
+.pure-u-3-5,
+.pure-u-4-5,
+.pure-u-5-5,
+.pure-u-1-6,
+.pure-u-5-6,
+.pure-u-1-8,
+.pure-u-3-8,
+.pure-u-5-8,
+.pure-u-7-8,
+.pure-u-1-12,
+.pure-u-5-12,
+.pure-u-7-12,
+.pure-u-11-12,
+.pure-u-1-24,
+.pure-u-2-24,
+.pure-u-3-24,
+.pure-u-4-24,
+.pure-u-5-24,
+.pure-u-6-24,
+.pure-u-7-24,
+.pure-u-8-24,
+.pure-u-9-24,
+.pure-u-10-24,
+.pure-u-11-24,
+.pure-u-12-24,
+.pure-u-13-24,
+.pure-u-14-24,
+.pure-u-15-24,
+.pure-u-16-24,
+.pure-u-17-24,
+.pure-u-18-24,
+.pure-u-19-24,
+.pure-u-20-24,
+.pure-u-21-24,
+.pure-u-22-24,
+.pure-u-23-24,
+.pure-u-24-24 {
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+    letter-spacing: normal;
+    word-spacing: normal;
+    vertical-align: top;
+    text-rendering: auto;
+}
+
+.pure-u-1-24 {
+    width: 4.1667%;
+    *width: 4.1357%;
+}
+
+.pure-u-1-12,
+.pure-u-2-24 {
+    width: 8.3333%;
+    *width: 8.3023%;
+}
+
+.pure-u-1-8,
+.pure-u-3-24 {
+    width: 12.5000%;
+    *width: 12.4690%;
+}
+
+.pure-u-1-6,
+.pure-u-4-24 {
+    width: 16.6667%;
+    *width: 16.6357%;
+}
+
+.pure-u-1-5 {
+    width: 20%;
+    *width: 19.9690%;
+}
+
+.pure-u-5-24 {
+    width: 20.8333%;
+    *width: 20.8023%;
+}
+
+.pure-u-1-4,
+.pure-u-6-24 {
+    width: 25%;
+    *width: 24.9690%;
+}
+
+.pure-u-7-24 {
+    width: 29.1667%;
+    *width: 29.1357%;
+}
+
+.pure-u-1-3,
+.pure-u-8-24 {
+    width: 33.3333%;
+    *width: 33.3023%;
+}
+
+.pure-u-3-8,
+.pure-u-9-24 {
+    width: 37.5000%;
+    *width: 37.4690%;
+}
+
+.pure-u-2-5 {
+    width: 40%;
+    *width: 39.9690%;
+}
+
+.pure-u-5-12,
+.pure-u-10-24 {
+    width: 41.6667%;
+    *width: 41.6357%;
+}
+
+.pure-u-11-24 {
+    width: 45.8333%;
+    *width: 45.8023%;
+}
+
+.pure-u-1-2,
+.pure-u-12-24 {
+    width: 50%;
+    *width: 49.9690%;
+}
+
+.pure-u-13-24 {
+    width: 54.1667%;
+    *width: 54.1357%;
+}
+
+.pure-u-7-12,
+.pure-u-14-24 {
+    width: 58.3333%;
+    *width: 58.3023%;
+}
+
+.pure-u-3-5 {
+    width: 60%;
+    *width: 59.9690%;
+}
+
+.pure-u-5-8,
+.pure-u-15-24 {
+    width: 62.5000%;
+    *width: 62.4690%;
+}
+
+.pure-u-2-3,
+.pure-u-16-24 {
+    width: 66.6667%;
+    *width: 66.6357%;
+}
+
+.pure-u-17-24 {
+    width: 70.8333%;
+    *width: 70.8023%;
+}
+
+.pure-u-3-4,
+.pure-u-18-24 {
+    width: 75%;
+    *width: 74.9690%;
+}
+
+.pure-u-19-24 {
+    width: 79.1667%;
+    *width: 79.1357%;
+}
+
+.pure-u-4-5 {
+    width: 80%;
+    *width: 79.9690%;
+}
+
+.pure-u-5-6,
+.pure-u-20-24 {
+    width: 83.3333%;
+    *width: 83.3023%;
+}
+
+.pure-u-7-8,
+.pure-u-21-24 {
+    width: 87.5000%;
+    *width: 87.4690%;
+}
+
+.pure-u-11-12,
+.pure-u-22-24 {
+    width: 91.6667%;
+    *width: 91.6357%;
+}
+
+.pure-u-23-24 {
+    width: 95.8333%;
+    *width: 95.8023%;
+}
+
+.pure-u-1,
+.pure-u-1-1,
+.pure-u-5-5,
+.pure-u-24-24 {
+    width: 100%;
+}
+.pure-g {
+  font-family: "Roboto", sans-serif;
+}
 .rx-app {
   min-height: 100%;
-  margin: 0 auto -35px;
+  margin: 0 auto -40px;
 }
 .rx-app .rx-eyebrow {
   min-height: 40px;
   background: #000000;
-  padding: 0 60px;
+  padding: 0 20px;
+}
+.rx-app .rx-eyebrow .rx-nav-logo {
+  padding-bottom: 0;
 }
 .rx-app .rx-eyebrow .rackspace-logo-bw {
   display: block;
@@ -1222,7 +1518,7 @@ body:hover .visually-hidden button {
 }
 .rx-footer {
   height: 40px;
-  padding: 0 60px;
+  padding: 0 20px;
   background: #212121;
   color: #bdbdbd;
 }
@@ -1233,13 +1529,40 @@ body:hover .visually-hidden button {
   padding: 0 10px 0 0;
   content: '\2022';
 }
+html,
+body {
+  color: #333333;
+}
+h1 {
+  font-size: 1.5em;
+}
+h1.light {
+  font-weight: 300;
+}
+h2 {
+  font-size: 1.25em;
+}
+h3 {
+  font-weight: 500;
+}
+.subtext {
+  font-weight: 500;
+  font-size: 0.813em;
+  color: #757575;
+}
+.secondary-text {
+  font-size: 0.875em;
+}
+.status-tag {
+  font-size: 0.75em;
+}
 /*
  * Common
  */
 html,
 body {
   height: 100%;
-  font-size: 13px;
+  font-size: 16px;
   color: #424242;
   font-family: "Roboto", sans-serif;
 }
@@ -1282,12 +1605,12 @@ p {
 }
 a {
   text-decoration: none;
-  color: #0D74D1;
+  color: #0E94A6;
 }
 a:hover,
 a:focus {
   text-decoration: underline;
-  color: #0075de;
+  color: #16B9D4;
 }
 table {
   clear: both;
@@ -1579,7 +1902,7 @@ rx-field-name .wrapper .required-symbol {
   color: #f44336;
 }
 [rx-form] {
-  font-size: 13px;
+  font-size: 16px;
   margin: 16px 0;
 }
 [rx-form] rx-field-name,
@@ -1908,7 +2231,7 @@ rx-field-name .wrapper .required-symbol {
   position: relative;
 }
 .action-list {
-  font-size: 13px;
+  font-size: 16px;
   z-index: 1000;
   position: absolute;
   top: 1.5em;
@@ -2057,7 +2380,7 @@ rx-field-name .wrapper .required-symbol {
   }
 }
 .btn-link {
-  color: #0D74D1;
+  color: #0E94A6;
   background: none;
   border: 0;
   padding: 0;
@@ -2082,8 +2405,8 @@ thead th .btn-link:focus {
 }
 .button-group {
   display: flex;
-  border: 2px solid #e7e7e7;
-  border-radius: 6px;
+  border: 1px solid #bdbdbd;
+  border-radius: 4px;
   font-size: 1.1em;
 }
 .button-group input {
@@ -2096,15 +2419,15 @@ thead th .btn-link:focus {
   color: #757575;
 }
 .button-group label:first-of-type {
-  border-top-left-radius: 4px;
-  border-bottom-left-radius: 4px;
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
 }
 .button-group label:last-of-type {
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
 }
 .button-group label:not(:last-of-type) {
-  border-right: 2px solid #e7e7e7;
+  border-right: 1px solid #bdbdbd;
 }
 .button-group label:hover,
 .button-group label:focus {
@@ -2117,15 +2440,84 @@ thead th .btn-link:focus {
   background: #757575;
 }
 .button {
+  border-radius: 2px;
+  font-size: 0.875em;
+  line-height: 28px;
+  padding: 0 10px;
   text-transform: uppercase;
 }
 .button:active {
-  background: #0C7C84 !important;
+  background: #0C7C84;
+}
+.button:focus {
+  outline: none;
+}
+.button.lg {
+  font-size: 1em;
+  line-height: 44px;
+  padding: 0 14px;
+}
+.button.sm {
+  font-size: 0.75em;
+  line-height: 21px;
+  padding: 0 8px;
 }
 .button.secondary {
-  background: #ffffff;
-  color: #0C7C84 !important;
+  background: none;
+  color: #0C7C84;
   border: 1px solid #0C7C84;
+}
+.button.secondary:hover {
+  border-color: #16B9D4;
+  background: #16B9D4;
+  color: #ffffff;
+}
+.button.secondary:active {
+  border-color: #0C7C84;
+  background: #0C7C84;
+  color: #ffffff;
+}
+.button-group {
+  display: block;
+  border: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+.button-group .button {
+  border-radius: 0;
+}
+.button-group .button,
+.button-group label {
+  display: inline-block;
+  margin-bottom: 0;
+  color: #0E94A6;
+  background: #ffffff;
+  border: 1px solid #bdbdbd;
+}
+.button-group .button:hover,
+.button-group label:hover {
+  color: #0C7C84;
+  background: #e4f9f9;
+}
+.button-group .button:first-of-type,
+.button-group label:first-of-type {
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+.button-group .button:last-of-type,
+.button-group label:last-of-type {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+.button-group .button:not(:last-of-type),
+.button-group label:not(:last-of-type) {
+  border-right: 0;
+}
+.button-group .button:not(:last-of-type) {
+  margin-right: -4px;
+}
+.button-group input:checked + label {
+  background: #0E94A6;
 }
 .button-group.demo-button-width {
   width: 250px;
