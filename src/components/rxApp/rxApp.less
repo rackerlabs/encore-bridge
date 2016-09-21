@@ -1,14 +1,15 @@
+@eyebrow-font-size: 13px;
+@eyebrow-height: 40px;
+
 .rx-app {
+  
   min-height: 100%;
-  margin: 0 auto -40px;
+  margin: 0 auto -@eyebrow-height;
 
   .rx-eyebrow {
-    min-height: 40px;
-    background: @black;
-    padding: 0 20px;
 
     .rx-nav-logo {
-      padding-bottom: 0;
+      padding-top: 12px;
     }
 
     .rackspace-logo-bw {
@@ -25,13 +26,15 @@
     }
 
     .account-menu .action-list {
+      font-size: @eyebrow-font-size;
       width: 200px;
-      left: -40px;
+      left: -75px;
+      top: 32px;
     }
   }
 
   .rx-push {
-    height: 40px;
+    height: @eyebrow-height;
   }
 }
 
@@ -49,7 +52,6 @@
   .rx-nav-item {
     display: inline-block;
     vertical-align: top;
-    padding: 12px 0;
 
     &:not(:first-child) {
       padding-left: 10px;
@@ -62,7 +64,7 @@
   background: @gray-975;
 
   .rx-nav-item {
-    padding: 8px 15px 7px;
+    padding: 6px 15px;
     color: @gray-400;
     font-size: 18px;
 
@@ -118,10 +120,15 @@
   }
 }
 
-.rx-footer {
-  height: 40px;
+.rx-eyebrow, .rx-footer {
+  background: @black;
+  height: @eyebrow-height;
+  line-height: @eyebrow-height;
+  font-size: @eyebrow-font-size;
   padding: 0 20px;
-  background: @gray-975;
+}
+
+.rx-footer {
   color: @gray-500;
 
   .rx-nav-item:not(:first-child) {

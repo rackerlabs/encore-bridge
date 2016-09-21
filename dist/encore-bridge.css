@@ -1419,13 +1419,8 @@ this the same font stack that Normalize.css sets for the `body`.
   min-height: 100%;
   margin: 0 auto -40px;
 }
-.rx-app .rx-eyebrow {
-  min-height: 40px;
-  background: #000000;
-  padding: 0 20px;
-}
 .rx-app .rx-eyebrow .rx-nav-logo {
-  padding-bottom: 0;
+  padding-top: 12px;
 }
 .rx-app .rx-eyebrow .rackspace-logo-bw {
   display: block;
@@ -1439,8 +1434,10 @@ this the same font stack that Normalize.css sets for the `body`.
   margin-left: 20px;
 }
 .rx-app .rx-eyebrow .account-menu .action-list {
+  font-size: 13px;
   width: 200px;
-  left: -40px;
+  left: -75px;
+  top: 32px;
 }
 .rx-app .rx-push {
   height: 40px;
@@ -1455,7 +1452,6 @@ this the same font stack that Normalize.css sets for the `body`.
 .rx-nav .rx-nav-item {
   display: inline-block;
   vertical-align: top;
-  padding: 12px 0;
 }
 .rx-nav .rx-nav-item:not(:first-child) {
   padding-left: 10px;
@@ -1465,7 +1461,7 @@ this the same font stack that Normalize.css sets for the `body`.
   background: #212121;
 }
 .rx-nav-primary .rx-nav-item {
-  padding: 8px 15px 7px;
+  padding: 6px 15px;
   color: #d8d8d8;
   font-size: 18px;
 }
@@ -1516,10 +1512,15 @@ this the same font stack that Normalize.css sets for the `body`.
   background: #000000;
   border-bottom: 1px solid #424242;
 }
+.rx-eyebrow,
 .rx-footer {
+  background: #000000;
   height: 40px;
+  line-height: 40px;
+  font-size: 13px;
   padding: 0 20px;
-  background: #212121;
+}
+.rx-footer {
   color: #bdbdbd;
 }
 .rx-footer .rx-nav-item:not(:first-child) {
@@ -1532,6 +1533,7 @@ this the same font stack that Normalize.css sets for the `body`.
 html,
 body {
   color: #333333;
+  line-height: 1.5em;
 }
 h1 {
   font-size: 1.5em;
@@ -1544,6 +1546,9 @@ h2 {
 }
 h3 {
   font-weight: 500;
+}
+p {
+  line-height: 1.5em !important;
 }
 .subtext {
   font-weight: 500;
