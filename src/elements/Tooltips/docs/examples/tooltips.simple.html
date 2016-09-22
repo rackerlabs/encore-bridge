@@ -1,0 +1,24 @@
+<p>Use the tooltip when you want to convey brief snippets of information, to explain an element a bit more, or to display truncated text.</p>
+
+<p>
+  simple content:
+  <rx-tooltip>hello</rx-tooltip>
+</p>
+
+<p>
+  html content:
+  <rx-tooltip>
+    Prompt to take action
+    <button class="button sm">Do it</button>
+    <button class="button sm secondary">Cancel</button>
+  </rx-tooltip>
+</p>
+
+<p>
+  on another element
+  <br>
+  <button class="button" rx-tooltip-anchor>
+    What do I do?
+    <rx-tooltip-content>Nothing :/</rx-tooltip-content>
+  </button>
+</p>

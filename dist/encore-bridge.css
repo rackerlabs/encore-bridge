@@ -2257,6 +2257,86 @@ rx-field-name .wrapper .required-symbol {
 .actions-area > li {
   padding: 0 7px;
 }
+.button {
+  border-radius: 2px;
+  font-size: 0.875em;
+  line-height: 28px;
+  padding: 0 10px;
+  text-transform: uppercase;
+}
+.button:active {
+  background: #0C7C84;
+}
+.button:focus {
+  outline: none;
+}
+.button.lg {
+  font-size: 1em;
+  line-height: 44px;
+  padding: 0 14px;
+}
+.button.sm {
+  font-size: 0.75em;
+  line-height: 21px;
+  padding: 0 8px;
+}
+.button.secondary {
+  background: none;
+  color: #0C7C84;
+  border: 1px solid #0C7C84;
+}
+.button.secondary:hover {
+  border-color: #16B9D4;
+  background: #16B9D4;
+  color: #ffffff;
+}
+.button.secondary:active {
+  border-color: #0C7C84;
+  background: #0C7C84;
+  color: #ffffff;
+}
+.button-group {
+  display: block;
+  border: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+.button-group .button {
+  border-radius: 0;
+}
+.button-group .button,
+.button-group label {
+  display: inline-block;
+  margin-bottom: 0;
+  color: #0E94A6;
+  background: #ffffff;
+  border: 1px solid #bdbdbd;
+}
+.button-group .button:hover,
+.button-group label:hover {
+  color: #0C7C84;
+  background: #e4f9f9;
+}
+.button-group .button:first-of-type,
+.button-group label:first-of-type {
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+.button-group .button:last-of-type,
+.button-group label:last-of-type {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+.button-group .button:not(:last-of-type),
+.button-group label:not(:last-of-type) {
+  border-right: 0;
+}
+.button-group .button:not(:last-of-type) {
+  margin-right: -4px;
+}
+.button-group input:checked + label {
+  background: #0E94A6;
+}
 /*
  * rxButton
  */
@@ -2443,86 +2523,6 @@ thead th .btn-link:focus {
 .button-group input:checked + label {
   color: #ffffff;
   background: #757575;
-}
-.button {
-  border-radius: 2px;
-  font-size: 0.875em;
-  line-height: 28px;
-  padding: 0 10px;
-  text-transform: uppercase;
-}
-.button:active {
-  background: #0C7C84;
-}
-.button:focus {
-  outline: none;
-}
-.button.lg {
-  font-size: 1em;
-  line-height: 44px;
-  padding: 0 14px;
-}
-.button.sm {
-  font-size: 0.75em;
-  line-height: 21px;
-  padding: 0 8px;
-}
-.button.secondary {
-  background: none;
-  color: #0C7C84;
-  border: 1px solid #0C7C84;
-}
-.button.secondary:hover {
-  border-color: #16B9D4;
-  background: #16B9D4;
-  color: #ffffff;
-}
-.button.secondary:active {
-  border-color: #0C7C84;
-  background: #0C7C84;
-  color: #ffffff;
-}
-.button-group {
-  display: block;
-  border: 0;
-  border-radius: 0;
-  font-size: 1em;
-}
-.button-group .button {
-  border-radius: 0;
-}
-.button-group .button,
-.button-group label {
-  display: inline-block;
-  margin-bottom: 0;
-  color: #0E94A6;
-  background: #ffffff;
-  border: 1px solid #bdbdbd;
-}
-.button-group .button:hover,
-.button-group label:hover {
-  color: #0C7C84;
-  background: #e4f9f9;
-}
-.button-group .button:first-of-type,
-.button-group label:first-of-type {
-  border-top-left-radius: 2px;
-  border-bottom-left-radius: 2px;
-}
-.button-group .button:last-of-type,
-.button-group label:last-of-type {
-  border-top-right-radius: 2px;
-  border-bottom-right-radius: 2px;
-}
-.button-group .button:not(:last-of-type),
-.button-group label:not(:last-of-type) {
-  border-right: 0;
-}
-.button-group .button:not(:last-of-type) {
-  margin-right: -4px;
-}
-.button-group input:checked + label {
-  background: #0E94A6;
 }
 .button-group.demo-button-width {
   width: 250px;
@@ -2989,6 +2989,147 @@ rx-tags[disabled] .rx-tags:hover {
 }
 .rx-tags .tag:focus .fa-times:hover {
   color: #ffffff;
+}
+.tooltip {
+  position: absolute;
+  z-index: 1070;
+  display: block;
+  visibility: visible;
+  font-size: 16px;
+  line-height: 1.2;
+  opacity: 0;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+.tooltip.in {
+  opacity: 1;
+}
+.tooltip.top {
+  margin-top: -8px;
+}
+.tooltip.right {
+  margin-left: 8px;
+}
+.tooltip.bottom {
+  margin-top: 8px;
+}
+.tooltip.left {
+  margin-left: -8px;
+}
+.tooltip-inner {
+  border: 1px solid #9e9e9e;
+  max-width: 200px;
+  color: #ffffff;
+  text-align: center;
+  text-decoration: none;
+  background-color: #757575;
+  border-radius: 4px;
+  box-shadow: rgba(0, 0, 0, 0.35) 1px 1px 4px 0px;
+  padding: 15px;
+}
+.tooltip-inner .tooltip-header {
+  color: #ffffff;
+  text-align: left;
+  font-size: 15px;
+  padding-bottom: 5px;
+  font-weight: 600;
+}
+.tooltip-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 9px solid transparent;
+  text-shadow: rgba(0, 0, 0, 0.09) 1px 1px 1px;
+}
+.tooltip-arrow:before {
+  pointer-events: none;
+  content: " ";
+  position: absolute;
+  border: 8px solid transparent;
+}
+.tooltip.left .tooltip-arrow,
+.tooltip.right .tooltip-arrow {
+  top: 50%;
+  margin-top: -9px;
+}
+.tooltip.left .tooltip-arrow:before,
+.tooltip.right .tooltip-arrow:before {
+  margin-top: -8px;
+}
+.tooltip.top .tooltip-arrow,
+.tooltip.bottom .tooltip-arrow {
+  left: 50%;
+  margin-left: -9px;
+}
+.tooltip.top .tooltip-arrow:before,
+.tooltip.bottom .tooltip-arrow:before {
+  margin-left: -8px;
+}
+.tooltip.top .tooltip-arrow {
+  bottom: -8px;
+  border-bottom-width: 0;
+  border-top-color: #9e9e9e;
+}
+.tooltip.top .tooltip-arrow:before {
+  top: -10px;
+  border-top-color: #757575;
+}
+.tooltip.right .tooltip-arrow {
+  left: -8px;
+  border-left-width: 0;
+  border-right-color: #9e9e9e;
+}
+.tooltip.right .tooltip-arrow:before {
+  right: -10px;
+  border-right-color: #757575;
+}
+.tooltip.bottom .tooltip-arrow {
+  top: -8px;
+  border-top-width: 0;
+  border-bottom-color: #9e9e9e;
+}
+.tooltip.bottom .tooltip-arrow:before {
+  bottom: -10px;
+  border-bottom-color: #757575;
+}
+.tooltip.left .tooltip-arrow {
+  right: -8px;
+  border-right-width: 0;
+  border-left-color: #9e9e9e;
+}
+.tooltip.left .tooltip-arrow:before {
+  left: -10px;
+  border-left-color: #757575;
+}
+rx-tooltip i {
+  color: #0E94A6;
+}
+rx-tooltip .tooltip {
+  left: -10px;
+}
+[rx-tooltip-anchor] {
+  display: inline-block;
+  position: relative;
+}
+rx-tooltip-content .tooltip.bottom {
+  display: none;
+}
+rx-tooltip-content .tooltip.bottom.in {
+  display: block;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-arrow {
+  left: 18px;
+  border-bottom-color: #d8d8d8;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-arrow:before {
+  border-bottom-color: #eeeeee;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-inner {
+  background: #eeeeee;
+  color: #424242;
+  border: 1px solid #d8d8d8;
+  padding: 10px;
 }
 .rxStatusMappings-demo .demo-status-column-table {
   max-width: 500px;

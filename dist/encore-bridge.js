@@ -1007,6 +1007,91 @@ angular.module('encore.ui.elements', [
 ]);
 
 angular.module('encore.ui.elements')
+.directive('rxTooltip', ["$timeout", function ($timeout) {
+    return {
+        restrict: 'E',
+        compile: function (tElement) {
+            var contents = tElement.contents().remove();
+            var template = angular.element('<div rx-tooltip-anchor><i class="fa fa-question-circle"></i>' +
+                                           '<rx-tooltip-content></rx-tooltip-content></div>');
+            template.find('rx-tooltip-content').append(contents);
+            tElement.append(template);
+        }
+    };
+}])
+.directive('rxTooltipAnchor', ["$timeout", function ($timeout) {
+    return {
+        restrict: 'A',
+        require: 'rxTooltipAnchor',
+        controller: ["$scope", function ($scope) {
+            var self = this;
+            var pendingTimeout = null;
+
+            this.onVisibilityChange = _.noop;
+
+            this.setVisibility = function (visible) {
+                if (visible && pendingTimeout) {
+                    $timeout.cancel(pendingTimeout);
+                    pendingTimeout = null;
+                }
+                this.onVisibilityChange(visible);
+            };
+
+            this.scheduleHide = function () {
+                if (pendingTimeout) {
+                    return;
+                }
+
+                pendingTimeout = $timeout(function () {
+                    self.setVisibility(false);
+                    pendingTimeout = null;
+                }, 500)
+            };
+
+            $scope.$on('$destroy', function () {
+                $timeout.cancel(pendingTimeout);
+            });
+        }],
+        link: function (scope, element, attrs, rxTooltipAnchor) {
+            var visible = false;
+
+            function toggleVisibility () {
+                visible = !visible;
+                rxTooltipAnchor.setVisibility(visible);
+            }
+
+            element.on('mouseenter', function () {
+                rxTooltipAnchor.setVisibility(true);
+            });
+            element.on('mouseleave', rxTooltipAnchor.scheduleHide);
+        }
+    };
+}])
+.directive('rxTooltipContent', function () {
+    return {
+        restrict: 'E',
+        require: '^rxTooltipAnchor',
+        transclude: true,
+        scope: {},
+        template: '<div class="tooltip bottom" ng-class="{in: visible}" ><div class="tooltip-arrow"></div>' +
+                  '<div class="tooltip-inner" ng-transclude></div></div>',
+        link: function (scope, element, attrs, rxTooltipAnchor) {
+            scope.visible = false;
+            rxTooltipAnchor.onVisibilityChange = function (visible) {
+                scope.$apply(function () {
+                    scope.visible = visible;
+                });
+            };
+
+            element.on('mouseenter', function () {
+                rxTooltipAnchor.setVisibility(true);
+            });
+            element.on('mouseleave', rxTooltipAnchor.scheduleHide);
+        }
+    };
+});
+
+angular.module('encore.ui.elements')
 /**
  * @ngdoc directive
  * @name rxTags.directive:rxTags
@@ -1774,6 +1859,21 @@ angular.module('encore.ui.elements')
 });
 
 angular.module('encore.ui.elements')
+.config(["$provide", function ($provide) {
+  $provide.decorator('rxActionMenuDirective', ["$delegate", function ($delegate) {
+    // https://github.com/angular/angular.js/issues/10149
+    _.each(['type', 'text'], function (key) {
+      $delegate[0].$$isolateBindings[key] = {
+        attrName: key,
+        mode: '@',
+        optional: true
+      };
+    });
+    return $delegate;
+  }]);
+}]);
+
+angular.module('encore.ui.elements')
 /**
  * @ngdoc directive
  * @name elements.directive:rxActionMenu
@@ -1838,21 +1938,6 @@ angular.module('encore.ui.elements')
             // https://github.com/angular-ui/bootstrap/blob/master/src/tooltip/tooltip.js
         }
     };
-}]);
-
-angular.module('encore.ui.elements')
-.config(["$provide", function ($provide) {
-  $provide.decorator('rxActionMenuDirective', ["$delegate", function ($delegate) {
-    // https://github.com/angular/angular.js/issues/10149
-    _.each(['type', 'text'], function (key) {
-      $delegate[0].$$isolateBindings[key] = {
-        attrName: key,
-        mode: '@',
-        optional: true
-      };
-    });
-    return $delegate;
-  }]);
 }]);
 
 /**

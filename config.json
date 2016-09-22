@@ -16,7 +16,8 @@
       "Buttons",
       "Forms",
       "Metadata",
-      "Tags"
+      "Tags",
+      "Tooltips"
     ],
     "utilities": [
       "Session",
