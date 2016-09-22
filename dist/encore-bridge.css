@@ -2257,86 +2257,6 @@ rx-field-name .wrapper .required-symbol {
 .actions-area > li {
   padding: 0 7px;
 }
-.button {
-  border-radius: 2px;
-  font-size: 0.875em;
-  line-height: 28px;
-  padding: 0 10px;
-  text-transform: uppercase;
-}
-.button:active {
-  background: #0C7C84;
-}
-.button:focus {
-  outline: none;
-}
-.button.lg {
-  font-size: 1em;
-  line-height: 44px;
-  padding: 0 14px;
-}
-.button.sm {
-  font-size: 0.75em;
-  line-height: 21px;
-  padding: 0 8px;
-}
-.button.secondary {
-  background: none;
-  color: #0C7C84;
-  border: 1px solid #0C7C84;
-}
-.button.secondary:hover {
-  border-color: #16B9D4;
-  background: #16B9D4;
-  color: #ffffff;
-}
-.button.secondary:active {
-  border-color: #0C7C84;
-  background: #0C7C84;
-  color: #ffffff;
-}
-.button-group {
-  display: block;
-  border: 0;
-  border-radius: 0;
-  font-size: 1em;
-}
-.button-group .button {
-  border-radius: 0;
-}
-.button-group .button,
-.button-group label {
-  display: inline-block;
-  margin-bottom: 0;
-  color: #0E94A6;
-  background: #ffffff;
-  border: 1px solid #bdbdbd;
-}
-.button-group .button:hover,
-.button-group label:hover {
-  color: #0C7C84;
-  background: #e4f9f9;
-}
-.button-group .button:first-of-type,
-.button-group label:first-of-type {
-  border-top-left-radius: 2px;
-  border-bottom-left-radius: 2px;
-}
-.button-group .button:last-of-type,
-.button-group label:last-of-type {
-  border-top-right-radius: 2px;
-  border-bottom-right-radius: 2px;
-}
-.button-group .button:not(:last-of-type),
-.button-group label:not(:last-of-type) {
-  border-right: 0;
-}
-.button-group .button:not(:last-of-type) {
-  margin-right: -4px;
-}
-.button-group input:checked + label {
-  background: #0E94A6;
-}
 /*
  * rxButton
  */
@@ -2523,6 +2443,86 @@ thead th .btn-link:focus {
 .button-group input:checked + label {
   color: #ffffff;
   background: #757575;
+}
+.button {
+  border-radius: 2px;
+  font-size: 0.875em;
+  line-height: 28px;
+  padding: 0 10px;
+  text-transform: uppercase;
+}
+.button:active {
+  background: #0C7C84;
+}
+.button:focus {
+  outline: none;
+}
+.button.lg {
+  font-size: 1em;
+  line-height: 44px;
+  padding: 0 14px;
+}
+.button.sm {
+  font-size: 0.75em;
+  line-height: 21px;
+  padding: 0 8px;
+}
+.button.secondary {
+  background: none;
+  color: #0C7C84;
+  border: 1px solid #0C7C84;
+}
+.button.secondary:hover {
+  border-color: #16B9D4;
+  background: #16B9D4;
+  color: #ffffff;
+}
+.button.secondary:active {
+  border-color: #0C7C84;
+  background: #0C7C84;
+  color: #ffffff;
+}
+.button-group {
+  display: block;
+  border: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+.button-group .button {
+  border-radius: 0;
+}
+.button-group .button,
+.button-group label {
+  display: inline-block;
+  margin-bottom: 0;
+  color: #0E94A6;
+  background: #ffffff;
+  border: 1px solid #bdbdbd;
+}
+.button-group .button:hover,
+.button-group label:hover {
+  color: #0C7C84;
+  background: #e4f9f9;
+}
+.button-group .button:first-of-type,
+.button-group label:first-of-type {
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+.button-group .button:last-of-type,
+.button-group label:last-of-type {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+.button-group .button:not(:last-of-type),
+.button-group label:not(:last-of-type) {
+  border-right: 0;
+}
+.button-group .button:not(:last-of-type) {
+  margin-right: -4px;
+}
+.button-group input:checked + label {
+  background: #0E94A6;
 }
 .button-group.demo-button-width {
   width: 250px;
