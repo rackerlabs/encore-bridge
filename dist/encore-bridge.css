@@ -2527,6 +2527,16 @@ thead th .btn-link:focus {
 .button-group.demo-button-width {
   width: 250px;
 }
+rx-date-picker .popup {
+  border-width: 1px !important;
+}
+rx-date-picker .popup nav span.arrow:hover {
+  background: #d8d8d8;
+}
+rx-date-picker .popup .day.outOfMonth {
+  color: #bdbdbd;
+  background-color: inherit !important;
+}
 /*
  * rxCheckbox
  */
@@ -2668,11 +2678,11 @@ rx-date-picker[disabled] .control .icon {
   color: #9e9e9e !important;
 }
 rx-date-picker .popup {
-  background-color: #ffffff;
-  border-color: #d8d8d8;
+  background-color: #fafafa;
+  border-color: #e0e0e0;
   border-style: solid;
   border-width: 5px 1px 1px;
-  border-top-color: #0D74D1;
+  border-top-color: #e0e0e0;
   margin: 0;
   padding: 0;
   position: absolute;
@@ -2714,7 +2724,7 @@ rx-date-picker .popup .day .circle {
 }
 rx-date-picker .popup nav {
   align-items: stretch;
-  border-bottom: 2px solid #d8d8d8;
+  border-bottom: 2px solid #e0e0e0;
   color: #424242;
   cursor: default;
   display: flex;
@@ -2757,9 +2767,9 @@ rx-date-picker .popup .calendar header {
   flex-flow: row wrap;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
+  background-color: #eeeeee;
   border-bottom: 1px solid #d8d8d8;
-  color: #616161;
+  color: #bdbdbd;
   font-size: 10px;
   font-weight: bold;
   height: 20px;
@@ -2773,12 +2783,12 @@ rx-date-picker .popup .calendar .day.today .circle {
   border-color: #757575;
 }
 rx-date-picker .popup .calendar .day.selected .circle {
-  background-color: #0D74D1;
+  background-color: #0C7C84;
   border-color: transparent;
   color: #ffffff;
 }
 rx-date-picker .popup .calendar .day:not(.selected):hover .circle {
-  background-color: #BBDEFB;
+  background-color: #B5E2EB;
   color: #424242;
 }
 rx-time-picker {
