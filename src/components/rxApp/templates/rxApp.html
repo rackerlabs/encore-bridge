@@ -1,21 +1,22 @@
 <div class="rx-app" ng-class="{embedded: isEmbedded}">
   <div class="rx-eyebrow" ng-show="!isEmbedded">
     <ul class="rx-nav pull-left">
-      <li class="rx-nav-item rx-nav-logo"><a href="#"><span class="rackspace-logo-bw"></span></a></li>
+      <!--<li class="rx-nav-item rx-nav-logo"><span class="rackspace-logo-bw"></span></li>-->
+      <li class="rx-nav-item rx-nav-logo"><img src="rackspace-logo-white.png"></img></li>
       <li class="rx-nav-item">
-        <a href="https://my.rackspace.com/">Back to MyRackspace</a>
+        <a target="_blank" href="https://my.rackspace.com/">Back to MyRackspace</a>
       </li>
     </ul>
     <ul class="rx-nav pull-right">
-      <li class="rx-nav-item"><a href="https://my.rackspace.com/portal/feedback/index">Feedback</a></li>
-      <li class="rx-nav-item"><a href="https://my.rackspace.com/portal/ticket/create">Create Ticket</a></li>
-      <li class="rx-nav-item"><a href="https://my.rackspace.com/portal/support/team">Contact Support</a></li>
+      <li class="rx-nav-item"><a target="_blank" href="https://my.rackspace.com/portal/feedback/index">Feedback</a></li>
+      <li class="rx-nav-item"><a target="_blank" href="https://my.rackspace.com/portal/ticket/create">Create Ticket</a></li>
+      <li class="rx-nav-item"><a target="_blank" href="https://my.rackspace.com/portal/support/team">Contact Support</a></li>
       <li class="rx-nav-item">
-        <rx-action-menu class="account-menu" text="Barbra Streisand">
+        <rx-action-menu class="account-menu" text="{{user}}">
           <ul class="actions-area">
             <li>
-              <div>Account: 123456</div>
-              <div>Company ABC</div>
+              <div>Account # {{accountNumber}}</div>
+              <div>{{accountName}}</div>
             </li>
             <li class="divider"></li>
             <li>
@@ -25,14 +26,14 @@
               </a>
             </li>
             <li>
-              <a href="#">
+              <a target="_blank" href="https://my.rackspace.com/portal/ticket/index">
                 Support Tickets
                 <div class="caption">Your support questions</div>
               </a>
             </li>
             <li class="divider"></li>
-            <li><a href="#">Profile Settings</a></li>
-            <li><a href="#">Logout</a></li>
+            <!--<li><a target="_blank" href="#">Profile Settings</a></li>-->
+            <li><a href="/saml/logout/request">Logout</a></li>
           </ul>
         </rx-action-menu>
       </li>
@@ -58,7 +59,7 @@
 <div class="rx-footer" ng-show="!isEmbedded">
   <ul class="rx-nav">
     <li class="rx-nav-item">&copy; Rackspace, US</li>
-    <li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a></li>
-    <li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a></li>
+    <li class="rx-nav-item"><a target="_blank" href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a></li>
+    <li class="rx-nav-item"><a target="_blank" href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a></li>
   </ul>
 </div>

@@ -4006,6 +4006,14 @@ angular.module('encore.ui.rxApp')
 }]);
 
 angular.module('encore.ui.rxApp')
+.constant('rxUserData', {
+    user: 'My Account',
+    accountNumber: '',
+    accountType: '',
+    accountName: ''
+});
+
+angular.module('encore.ui.rxApp')
 .provider('appRoutes', function () {
   this.routes = [];
   this.$get = function () {
@@ -4014,13 +4022,14 @@ angular.module('encore.ui.rxApp')
 });
 
 angular.module('encore.ui.rxApp')
-.directive('rxApp', ["$window", "appRoutes", function ($window, appRoutes) {
+.directive('rxApp', ["$window", "appRoutes", "rxUserData", function ($window, appRoutes, rxUserData) {
   return {
     restrict: 'E',
     transclude: true,
     templateUrl: 'templates/rxApp.html',
     link: function (scope) {
       scope.routes = appRoutes;
+      _.assign(scope, rxUserData);
       scope.isEmbedded = $window.self !== $window.top;
     }
   };
@@ -4051,7 +4060,7 @@ angular.module('encore.ui.layout', []);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxApp.html',
-    '<div class="rx-app" ng-class="{embedded: isEmbedded}"><div class="rx-eyebrow" ng-show="!isEmbedded"><ul class="rx-nav pull-left"><li class="rx-nav-item rx-nav-logo"><a href="#"><span class="rackspace-logo-bw"></span></a></li><li class="rx-nav-item"><a href="https://my.rackspace.com/">Back to MyRackspace</a></li></ul><ul class="rx-nav pull-right"><li class="rx-nav-item"><a href="https://my.rackspace.com/portal/feedback/index">Feedback</a></li><li class="rx-nav-item"><a href="https://my.rackspace.com/portal/ticket/create">Create Ticket</a></li><li class="rx-nav-item"><a href="https://my.rackspace.com/portal/support/team">Contact Support</a></li><li class="rx-nav-item"><rx-action-menu class="account-menu" text="Barbra Streisand"><ul class="actions-area"><li><div>Account: 123456</div><div>Company ABC</div></li><li class="divider"></li><li><a href="#">Notifications<div class="caption">Incidents, maintenances, etc.</div></a></li><li><a href="#">Support Tickets<div class="caption">Your support questions</div></a></li><li class="divider"></li><li><a href="#">Profile Settings</a></li><li><a href="#">Logout</a></li></ul></rx-action-menu></li></ul></div><div class="rx-nav-primary" ng-if="routes.length > 0 && !isEmbedded"><ul class="rx-nav"><li class="rx-nav-item" ng-repeat="route in routes" ng-class="{\'active\': activePrimaryNavItem === \'components\'}"><rx-action-menu text="{{route.title}}" type="utility" ng-if="route.children && route.children.length > 0"><ul class="actions-area"><li ng-repeat="navItem in route.children"><a class="rs-dropdown-link" ng-href="{{navItem.href}}">{{navItem.linkText}}</a></li></ul></rx-action-menu><a ng-if="!route.children" ng-href="{{route.href}}">{{route.title}}</a></li></ul></div><div ng-transclude></div><div class="rx-push" ng-show="!isEmbedded"></div></div><div class="rx-footer" ng-show="!isEmbedded"><ul class="rx-nav"><li class="rx-nav-item">&copy; Rackspace, US</li><li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a></li><li class="rx-nav-item"><a href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a></li></ul></div>');
+    '<div class="rx-app" ng-class="{embedded: isEmbedded}"><div class="rx-eyebrow" ng-show="!isEmbedded"><ul class="rx-nav pull-left"><!--<li class="rx-nav-item rx-nav-logo"><span class="rackspace-logo-bw"></span></li>--><li class="rx-nav-item rx-nav-logo"><img src="rackspace-logo-white.png"></li><li class="rx-nav-item"><a target="_blank" href="https://my.rackspace.com/">Back to MyRackspace</a></li></ul><ul class="rx-nav pull-right"><li class="rx-nav-item"><a target="_blank" href="https://my.rackspace.com/portal/feedback/index">Feedback</a></li><li class="rx-nav-item"><a target="_blank" href="https://my.rackspace.com/portal/ticket/create">Create Ticket</a></li><li class="rx-nav-item"><a target="_blank" href="https://my.rackspace.com/portal/support/team">Contact Support</a></li><li class="rx-nav-item"><rx-action-menu class="account-menu" text="{{user}}"><ul class="actions-area"><li><div>Account # {{accountNumber}}</div><div>{{accountName}}</div></li><li class="divider"></li><li><a href="#">Notifications<div class="caption">Incidents, maintenances, etc.</div></a></li><li><a target="_blank" href="https://my.rackspace.com/portal/ticket/index">Support Tickets<div class="caption">Your support questions</div></a></li><li class="divider"></li><!--<li><a target="_blank" href="#">Profile Settings</a></li>--><li><a href="/saml/logout/request">Logout</a></li></ul></rx-action-menu></li></ul></div><div class="rx-nav-primary" ng-if="routes.length > 0 && !isEmbedded"><ul class="rx-nav"><li class="rx-nav-item" ng-repeat="route in routes" ng-class="{\'active\': activePrimaryNavItem === \'components\'}"><rx-action-menu text="{{route.title}}" type="utility" ng-if="route.children && route.children.length > 0"><ul class="actions-area"><li ng-repeat="navItem in route.children"><a class="rs-dropdown-link" ng-href="{{navItem.href}}">{{navItem.linkText}}</a></li></ul></rx-action-menu><a ng-if="!route.children" ng-href="{{route.href}}">{{route.title}}</a></li></ul></div><div ng-transclude></div><div class="rx-push" ng-show="!isEmbedded"></div></div><div class="rx-footer" ng-show="!isEmbedded"><ul class="rx-nav"><li class="rx-nav-item">&copy; Rackspace, US</li><li class="rx-nav-item"><a target="_blank" href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a></li><li class="rx-nav-item"><a target="_blank" href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a></li></ul></div>');
 }]);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {

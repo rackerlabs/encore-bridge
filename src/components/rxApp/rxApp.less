@@ -9,16 +9,8 @@
   .rx-eyebrow {
 
     .rx-nav-logo {
-      padding-top: 12px;
-    }
-
-    .rackspace-logo-bw {
-      display: block;
-      margin: -8px 0 0 0;
-      padding: 0;
-      width: 137px;
-      height: 30px;
-      background-image: url('https://19c5b85ac8f15b5aa0f0-992405e4638ce3c6772d7b96e627ce61.ssl.cf1.rackcdn.com/assets/dist/7477ddf584f65ba6b8ea56d44aee5188231b0958/img.png');
+      padding-top: 4px;
+      height: @eyebrow-height - 4px;
     }
 
     .rx-nav-item:not(:first-child) {
@@ -38,12 +30,6 @@
   }
 }
 
-.rx-nav-item {
-  & > a, .rx-action-menu-toggle {
-    color: @gray-500;
-  }
-}
-
 .rx-nav {
   &.pull-right {
     float: right;
@@ -52,6 +38,14 @@
   .rx-nav-item {
     display: inline-block;
     vertical-align: top;
+
+    a, a:hover, .rx-action-menu-toggle {
+      color: @gray-500;
+    }
+
+    a:hover {
+      cursor: pointer;
+    }
 
     &:not(:first-child) {
       padding-left: 10px;
