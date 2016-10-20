@@ -648,6 +648,12 @@ angular.module('demoApp')
 });
 
 angular.module('demoApp')
+.controller('tooltipsSimpleExampleCtrl', function ($scope) {
+    $scope.dynamicTooltip = 'I was defined in the controller!';
+    $scope.htmlTooltip = '<span class="tooltip-header">A Tooltip Title</span><p>You can use HTML</p>';
+});
+
+angular.module('demoApp')
 .controller('SessionSimpleCtrl', function ($scope, $window, Session) {
     $scope.isAuthenticated = function () {
         $window.alert(Session.isAuthenticated());
@@ -968,6 +974,16 @@ angular.module('demoApp').run(['$templateCache', function($templateCache) {
 angular.module('demoApp').run(['$templateCache', function($templateCache) {
   $templateCache.put('tags.simple.html',
     '<div ng-controller="tagsSimpleExampleCtrl"><h4>Standard:</h4><rx-tags id="standard-tags" ng-model="tags" options="tagOptions" key="text"></rx-tags><h4>Disabled:</h4><rx-tags id="disabled-tags" ng-model="tagOptions" disabled="disabled"></rx-tags></div>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('tooltips.simple.html',
+    '<p>Use the tooltip when you want to convey brief snippets of information, to explain an element a bit more, or to display truncated text.</p><p>simple content:<rx-tooltip>hello</rx-tooltip></p><p>html content:<rx-tooltip>Prompt to take action <button class="button sm">Do it</button> <button class="button sm secondary">Cancel</button></rx-tooltip></p><p>on another element<br><button class="button" rx-tooltip-anchor>What do I do?<rx-tooltip-content>Nothing :/</rx-tooltip-content></button></p>');
+}]);
+
+angular.module('demoApp').run(['$templateCache', function($templateCache) {
+  $templateCache.put('Tooltips.docs.html',
+    '<p>The tooltips component provides styles to raw HTML elements and custom directive templates.</p><rx-example name="tooltips.simple"></rx-example>');
 }]);
 
 angular.module('demoApp').run(['$templateCache', function($templateCache) {

@@ -2,7 +2,7 @@ angular.module('demoApp', [
   'ngRoute',
   'encore.bridge'
 ])
-.config(function ($routeProvider, appRoutesProvider) {
+.config(function ($routeProvider, appRoutesProvider, rxUserData) {
   $routeProvider
   .when('/', {
     templateUrl: 'home.html'
@@ -52,6 +52,9 @@ angular.module('demoApp', [
   .when('/elements/Tags', {
     templateUrl: 'tags.simple.html'
   })
+  .when('/elements/Tooltips', {
+    templateUrl: 'tooltips.simple.html'
+  })
   .when('/styles/color', {
     templateUrl: 'views/color.html'
   })
@@ -67,7 +70,7 @@ angular.module('demoApp', [
   .map(function (mod) {
     return _.last(mod.split('.'));
   })
-  var elements = ['ActionMenu', 'Buttons', 'Forms', 'Metadata', 'Tags'];
+  var elements = ['ActionMenu', 'Buttons', 'Forms', 'Metadata', 'Tags', 'Tooltips'];
 
   var defineRoute = _.curry(function (type, name) {
       return {
@@ -92,6 +95,12 @@ angular.module('demoApp', [
       href: '#/styles/typography'
     }]
   }];
+
+  _.assign(rxUserData, {
+      user: 'Barbra Streisand',
+      accountName: 'Company ABC',
+      accountNumber: 123456
+  });
 })
 .run(function ($rootScope) {
   $rootScope.$on('$routeChangeSuccess', function (event, route) {

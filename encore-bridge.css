@@ -1419,35 +1419,21 @@ this the same font stack that Normalize.css sets for the `body`.
   min-height: 100%;
   margin: 0 auto -40px;
 }
-.rx-app .rx-eyebrow {
-  min-height: 40px;
-  background: #000000;
-  padding: 0 20px;
-}
 .rx-app .rx-eyebrow .rx-nav-logo {
-  padding-bottom: 0;
-}
-.rx-app .rx-eyebrow .rackspace-logo-bw {
-  display: block;
-  margin: -8px 0 0 0;
-  padding: 0;
-  width: 137px;
-  height: 30px;
-  background-image: url('https://19c5b85ac8f15b5aa0f0-992405e4638ce3c6772d7b96e627ce61.ssl.cf1.rackcdn.com/assets/dist/7477ddf584f65ba6b8ea56d44aee5188231b0958/img.png');
+  padding-top: 4px;
+  height: 36px;
 }
 .rx-app .rx-eyebrow .rx-nav-item:not(:first-child) {
   margin-left: 20px;
 }
 .rx-app .rx-eyebrow .account-menu .action-list {
+  font-size: 13px;
   width: 200px;
-  left: -40px;
+  right: -15px;
+  top: 32px;
 }
 .rx-app .rx-push {
   height: 40px;
-}
-.rx-nav-item > a,
-.rx-nav-item .rx-action-menu-toggle {
-  color: #bdbdbd;
 }
 .rx-nav.pull-right {
   float: right;
@@ -1455,7 +1441,14 @@ this the same font stack that Normalize.css sets for the `body`.
 .rx-nav .rx-nav-item {
   display: inline-block;
   vertical-align: top;
-  padding: 12px 0;
+}
+.rx-nav .rx-nav-item a,
+.rx-nav .rx-nav-item a:hover,
+.rx-nav .rx-nav-item .rx-action-menu-toggle {
+  color: #bdbdbd;
+}
+.rx-nav .rx-nav-item a:hover {
+  cursor: pointer;
 }
 .rx-nav .rx-nav-item:not(:first-child) {
   padding-left: 10px;
@@ -1465,7 +1458,7 @@ this the same font stack that Normalize.css sets for the `body`.
   background: #212121;
 }
 .rx-nav-primary .rx-nav-item {
-  padding: 8px 15px 7px;
+  padding: 6px 15px;
   color: #d8d8d8;
   font-size: 18px;
 }
@@ -1516,10 +1509,15 @@ this the same font stack that Normalize.css sets for the `body`.
   background: #000000;
   border-bottom: 1px solid #424242;
 }
+.rx-eyebrow,
 .rx-footer {
+  background: #000000;
   height: 40px;
+  line-height: 40px;
+  font-size: 13px;
   padding: 0 20px;
-  background: #212121;
+}
+.rx-footer {
   color: #bdbdbd;
 }
 .rx-footer .rx-nav-item:not(:first-child) {
@@ -1532,6 +1530,7 @@ this the same font stack that Normalize.css sets for the `body`.
 html,
 body {
   color: #333333;
+  line-height: 1.5em;
 }
 h1 {
   font-size: 1.5em;
@@ -1544,6 +1543,9 @@ h2 {
 }
 h3 {
   font-weight: 500;
+}
+p {
+  line-height: 1.5em !important;
 }
 .subtext {
   font-weight: 500;
@@ -2522,6 +2524,16 @@ thead th .btn-link:focus {
 .button-group.demo-button-width {
   width: 250px;
 }
+rx-date-picker .popup {
+  border-width: 1px !important;
+}
+rx-date-picker .popup nav span.arrow:hover {
+  background: #d8d8d8;
+}
+rx-date-picker .popup .day.outOfMonth {
+  color: #bdbdbd;
+  background-color: inherit !important;
+}
 /*
  * rxCheckbox
  */
@@ -2663,11 +2675,11 @@ rx-date-picker[disabled] .control .icon {
   color: #9e9e9e !important;
 }
 rx-date-picker .popup {
-  background-color: #ffffff;
-  border-color: #d8d8d8;
+  background-color: #fafafa;
+  border-color: #e0e0e0;
   border-style: solid;
   border-width: 5px 1px 1px;
-  border-top-color: #0D74D1;
+  border-top-color: #e0e0e0;
   margin: 0;
   padding: 0;
   position: absolute;
@@ -2709,7 +2721,7 @@ rx-date-picker .popup .day .circle {
 }
 rx-date-picker .popup nav {
   align-items: stretch;
-  border-bottom: 2px solid #d8d8d8;
+  border-bottom: 2px solid #e0e0e0;
   color: #424242;
   cursor: default;
   display: flex;
@@ -2752,9 +2764,9 @@ rx-date-picker .popup .calendar header {
   flex-flow: row wrap;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
+  background-color: #eeeeee;
   border-bottom: 1px solid #d8d8d8;
-  color: #616161;
+  color: #bdbdbd;
   font-size: 10px;
   font-weight: bold;
   height: 20px;
@@ -2768,12 +2780,12 @@ rx-date-picker .popup .calendar .day.today .circle {
   border-color: #757575;
 }
 rx-date-picker .popup .calendar .day.selected .circle {
-  background-color: #0D74D1;
+  background-color: #0C7C84;
   border-color: transparent;
   color: #ffffff;
 }
 rx-date-picker .popup .calendar .day:not(.selected):hover .circle {
-  background-color: #BBDEFB;
+  background-color: #B5E2EB;
   color: #424242;
 }
 rx-time-picker {
@@ -2984,6 +2996,147 @@ rx-tags[disabled] .rx-tags:hover {
 }
 .rx-tags .tag:focus .fa-times:hover {
   color: #ffffff;
+}
+rx-tooltip i {
+  color: #0E94A6;
+}
+rx-tooltip .tooltip {
+  left: -10px;
+}
+[rx-tooltip-anchor] {
+  display: inline-block;
+  position: relative;
+}
+rx-tooltip-content .tooltip.bottom {
+  display: none;
+}
+rx-tooltip-content .tooltip.bottom.in {
+  display: block;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-arrow {
+  left: 18px;
+  border-bottom-color: #d8d8d8;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-arrow:before {
+  border-bottom-color: #eeeeee;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-inner {
+  background: #eeeeee;
+  color: #424242;
+  border: 1px solid #d8d8d8;
+  padding: 10px;
+}
+.tooltip {
+  position: absolute;
+  z-index: 1070;
+  display: block;
+  visibility: visible;
+  font-size: 16px;
+  line-height: 1.2;
+  opacity: 0;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+.tooltip.in {
+  opacity: 1;
+}
+.tooltip.top {
+  margin-top: -8px;
+}
+.tooltip.right {
+  margin-left: 8px;
+}
+.tooltip.bottom {
+  margin-top: 8px;
+}
+.tooltip.left {
+  margin-left: -8px;
+}
+.tooltip-inner {
+  border: 1px solid #9e9e9e;
+  max-width: 200px;
+  color: #ffffff;
+  text-align: center;
+  text-decoration: none;
+  background-color: #757575;
+  border-radius: 4px;
+  box-shadow: rgba(0, 0, 0, 0.35) 1px 1px 4px 0px;
+  padding: 15px;
+}
+.tooltip-inner .tooltip-header {
+  color: #ffffff;
+  text-align: left;
+  font-size: 15px;
+  padding-bottom: 5px;
+  font-weight: 600;
+}
+.tooltip-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 9px solid transparent;
+  text-shadow: rgba(0, 0, 0, 0.09) 1px 1px 1px;
+}
+.tooltip-arrow:before {
+  pointer-events: none;
+  content: " ";
+  position: absolute;
+  border: 8px solid transparent;
+}
+.tooltip.left .tooltip-arrow,
+.tooltip.right .tooltip-arrow {
+  top: 50%;
+  margin-top: -9px;
+}
+.tooltip.left .tooltip-arrow:before,
+.tooltip.right .tooltip-arrow:before {
+  margin-top: -8px;
+}
+.tooltip.top .tooltip-arrow,
+.tooltip.bottom .tooltip-arrow {
+  left: 50%;
+  margin-left: -9px;
+}
+.tooltip.top .tooltip-arrow:before,
+.tooltip.bottom .tooltip-arrow:before {
+  margin-left: -8px;
+}
+.tooltip.top .tooltip-arrow {
+  bottom: -8px;
+  border-bottom-width: 0;
+  border-top-color: #9e9e9e;
+}
+.tooltip.top .tooltip-arrow:before {
+  top: -10px;
+  border-top-color: #757575;
+}
+.tooltip.right .tooltip-arrow {
+  left: -8px;
+  border-left-width: 0;
+  border-right-color: #9e9e9e;
+}
+.tooltip.right .tooltip-arrow:before {
+  right: -10px;
+  border-right-color: #757575;
+}
+.tooltip.bottom .tooltip-arrow {
+  top: -8px;
+  border-top-width: 0;
+  border-bottom-color: #9e9e9e;
+}
+.tooltip.bottom .tooltip-arrow:before {
+  bottom: -10px;
+  border-bottom-color: #757575;
+}
+.tooltip.left .tooltip-arrow {
+  right: -8px;
+  border-right-width: 0;
+  border-left-color: #9e9e9e;
+}
+.tooltip.left .tooltip-arrow:before {
+  left: -10px;
+  border-left-color: #757575;
 }
 .rxStatusMappings-demo .demo-status-column-table {
   max-width: 500px;
