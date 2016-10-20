@@ -2479,6 +2479,13 @@ thead th .btn-link:focus {
   background: #0C7C84;
   color: #ffffff;
 }
+.button.secondary[disabled],
+.button.secondary[disabled]:hover {
+  cursor: not-allowed;
+  color: #616161;
+  background: #d8d8d8;
+  border-color: #d8d8d8;
+}
 .button-group {
   display: block;
   border: 0;

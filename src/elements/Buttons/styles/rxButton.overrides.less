@@ -41,6 +41,13 @@
       background: @rxButton-default-active-background-color;
       color: @rxButton-default-text-color;
     }
+
+    &[disabled], &[disabled]:hover {
+      cursor: not-allowed;
+      color: @rxButton-disabled-text-color;
+      background: @rxButton-disabled-background-color;
+      border-color: @rxButton-disabled-background-color;
+    }
   }
 }
 
