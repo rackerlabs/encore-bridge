@@ -1,16 +1,15 @@
 <div class="rx-app" ng-class="{embedded: isEmbedded}">
   <div class="rx-eyebrow" ng-show="!isEmbedded">
     <ul class="rx-nav pull-left">
-      <!--<li class="rx-nav-item rx-nav-logo"><span class="rackspace-logo-bw"></span></li>-->
       <li class="rx-nav-item rx-nav-logo"><img src="images/rackspace-logo-white.png"></img></li>
       <li class="rx-nav-item">
-        <a target="_blank" href="https://my.rackspace.com/">Back to MyRackspace</a>
+        <a target="_blank" ng-href="{{myrackHostname}}">Back to MyRackspace</a>
       </li>
     </ul>
     <ul class="rx-nav pull-right">
       <li class="rx-nav-item"><a target="_blank" href="https://community.rackspace.com/feedback/default">Feedback</a></li>
-      <li class="rx-nav-item"><a target="_blank" href="https://my.rackspace.com/portal/ticket/create">Create Ticket</a></li>
-      <li class="rx-nav-item"><a target="_blank" href="https://my.rackspace.com/portal/support/team">Contact Support</a></li>
+      <li class="rx-nav-item"><a target="_blank" ng-href="{{myrackHostname}}/portal/ticket/create">Create Ticket</a></li>
+      <li class="rx-nav-item"><a target="_blank" ng-href="{{myrackHostname}}/portal/support/team">Contact Support</a></li>
       <li class="rx-nav-item">
         <rx-action-menu class="account-menu" text="{{user}}">
           <ul class="actions-area">
@@ -26,13 +25,12 @@
               </a>
             </li>
             <li>
-              <a target="_blank" href="https://my.rackspace.com/portal/ticket/index">
+              <a target="_blank" ng-href="{{myrackHostname}}/portal/ticket/index">
                 Support Tickets
                 <div class="caption">Your support questions</div>
               </a>
             </li>
             <li class="divider"></li>
-            <!--<li><a target="_blank" href="#">Profile Settings</a></li>-->
             <li><a href="/saml/myrack/logout">Logout</a></li>
           </ul>
         </rx-action-menu>
