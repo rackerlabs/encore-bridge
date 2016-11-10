@@ -1426,11 +1426,11 @@ this the same font stack that Normalize.css sets for the `body`.
 .rx-app .rx-eyebrow .rx-nav-item:not(:first-child) {
   margin-left: 20px;
 }
-.rx-app .rx-eyebrow .account-menu .action-list {
+.rx-app .rx-eyebrow .action-list {
   font-size: 13px;
   width: 200px;
   right: -15px;
-  top: 32px;
+  top: 42px;
 }
 .rx-app .rx-push {
   height: 40px;
@@ -1441,6 +1441,17 @@ this the same font stack that Normalize.css sets for the `body`.
 .rx-nav .rx-nav-item {
   display: inline-block;
   vertical-align: top;
+  padding: 0 10px;
+}
+.rx-nav .rx-nav-item.active {
+  background: #d32f2f;
+}
+.rx-nav .rx-nav-item.active,
+.rx-nav .rx-nav-item.active .rx-action-menu-toggle {
+  color: #ffffff;
+}
+.rx-nav .rx-nav-item .action-list .actions-area a.active {
+  color: #ffffff;
 }
 .rx-nav .rx-nav-item a,
 .rx-nav .rx-nav-item a:hover,
@@ -1449,9 +1460,6 @@ this the same font stack that Normalize.css sets for the `body`.
 }
 .rx-nav .rx-nav-item a:hover {
   cursor: pointer;
-}
-.rx-nav .rx-nav-item:not(:first-child) {
-  padding-left: 10px;
 }
 .rx-nav-primary {
   padding: 15px;
@@ -1511,7 +1519,7 @@ this the same font stack that Normalize.css sets for the `body`.
 }
 .rx-eyebrow,
 .rx-footer {
-  background: #000000;
+  background: #333333;
   height: 40px;
   line-height: 40px;
   font-size: 13px;

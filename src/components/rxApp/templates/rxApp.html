@@ -9,26 +9,24 @@
     <ul class="rx-nav pull-right">
       <li class="rx-nav-item"><a target="_blank" href="https://community.rackspace.com/feedback/default">Feedback</a></li>
       <li class="rx-nav-item"><a target="_blank" ng-href="{{myrackHostname}}/portal/ticket/create">Create Ticket</a></li>
-      <li class="rx-nav-item"><a target="_blank" ng-href="{{myrackHostname}}/portal/support/team">Contact Support</a></li>
+      <li class="rx-nav-item active">
+        <rx-action-menu text="Support">
+          <ul class="actions-area">
+            <li>
+              <a class="active" href="/">Notifications</a>
+            </li>
+            <li>
+              <a target="_blank" ng-href="{{myrackHostname}}/portal/ticket/index">Support Tickets</a>
+            </li>
+          </ul>
+        </rx-action-menu>
+      </li>
       <li class="rx-nav-item">
         <rx-action-menu class="account-menu" text="{{user}}">
           <ul class="actions-area">
             <li>
               <div>Account # {{accountNumber}}</div>
               <div>{{accountName}}</div>
-            </li>
-            <li class="divider"></li>
-            <li>
-              <a href="#">
-                Notifications
-                <div class="caption">Incidents, maintenances, etc.</div>
-              </a>
-            </li>
-            <li>
-              <a target="_blank" ng-href="{{myrackHostname}}/portal/ticket/index">
-                Support Tickets
-                <div class="caption">Your support questions</div>
-              </a>
             </li>
             <li class="divider"></li>
             <li><a target="_self" href="/saml/myrack/logout">Logout</a></li>

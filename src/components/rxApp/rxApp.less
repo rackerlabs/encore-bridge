@@ -17,11 +17,11 @@
       margin-left: 20px;
     }
 
-    .account-menu .action-list {
+    .action-list {
       font-size: @eyebrow-font-size;
       width: 200px;
       right: -15px;
-      top: 32px;
+      top: 42px;
     }
   }
 
@@ -38,6 +38,19 @@
   .rx-nav-item {
     display: inline-block;
     vertical-align: top;
+    padding: 0 10px;
+
+    &.active {
+      background: @red-700;
+      
+      &, .rx-action-menu-toggle {
+        color: @white;
+      }
+    }
+
+    .action-list .actions-area a.active {
+      color: @white;
+    }
 
     a, a:hover, .rx-action-menu-toggle {
       color: @gray-500;
@@ -45,10 +58,6 @@
 
     a:hover {
       cursor: pointer;
-    }
-
-    &:not(:first-child) {
-      padding-left: 10px;
     }
   }
 }
@@ -115,7 +124,7 @@
 }
 
 .rx-eyebrow, .rx-footer {
-  background: @black;
+  background: @gray-950;
   height: @eyebrow-height;
   line-height: @eyebrow-height;
   font-size: @eyebrow-font-size;
