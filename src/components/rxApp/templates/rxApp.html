@@ -3,7 +3,8 @@
     <ul class="rx-nav pull-left">
       <li class="rx-nav-item rx-nav-logo"><img src="images/rackspace-logo-white.png"></img></li>
       <li class="rx-nav-item">
-        <a target="_blank" ng-href="{{myrackHostname}}">Back to MyRackspace</a>
+        <a ng-if="accountName === 'hybrid'" target="_blank" ng-href="{{myrackHostname}}">Back to MyRackspace</a>
+        <a ng-if="accountName !== 'hybrid'" target="_blank" ng-href="{{reachHostname}}">Back to Reach</a>
       </li>
     </ul>
     <ul class="rx-nav pull-right">
@@ -29,7 +30,7 @@
               <div>{{accountName}}</div>
             </li>
             <li class="divider"></li>
-            <li><a target="_self" href="/saml/myrack/logout">Logout</a></li>
+            <li><a target="_self" ng-href="{{logoutUrl}}">Logout</a></li>
           </ul>
         </rx-action-menu>
       </li>

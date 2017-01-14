@@ -4,5 +4,6 @@ angular.module('encore.ui.rxApp')
     user: 'My Account',
     accountNumber: '',
     accountType: '',
-    accountName: ''
+    accountName: '',
+    logoutUrl: ''
 });
