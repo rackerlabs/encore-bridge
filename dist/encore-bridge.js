@@ -4030,9 +4030,18 @@ angular.module('encore.ui.rxApp')
     transclude: true,
     templateUrl: 'templates/rxApp.html',
     link: function (scope) {
-      scope.myrackHostname = 'https://' + (rxUserData.isProd ? '' : 'staging.') + 'my.rackspace.com';
-      scope.reachHostname = 'https://' + (rxUserData.isProd ? 'mycloud' : 'ui.staging.reach') +
-                            '.rackspace.com/cloud/' + rxUserData.accountNumber;
+      if (rxUserData.accountType === 'hybrid') {
+          scope.portalName = 'MyRackspace';
+          scope.portalBaseUrl = 'https://' + (rxUserData.isProd ? '' : 'staging.') + 'my.rackspace.com';
+          scope.ticketsUrl = scope.portalBaseUrl + '/portal/ticket/index';
+          scope.createTicketUrl = scope.portalBaseUrl + '/portal/ticket/create';
+      } else if (rxUserData.accountType === 'cloud') {
+          scope.portalName = 'Reach';
+          scope.portalBaseUrl = 'https://' + (rxUserData.isProd ? 'mycloud' : 'ui.staging.reach') +
+                                '.rackspace.com/cloud/' + rxUserData.accountNumber;
+          scope.ticketsUrl = scope.portalBaseUrl + '/tickets';
+          scope.createTicketUrl = scope.portalBaseUrl + '/tickets#new';
+      }
       scope.routes = appRoutes;
       _.assign(scope, rxUserData);
       scope.isEmbedded = $window.self !== $window.top;
@@ -4065,7 +4074,7 @@ angular.module('encore.ui.layout', []);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxApp.html',
-    '<div class="rx-app" ng-class="{embedded: isEmbedded}"><div class="rx-eyebrow" ng-show="!isEmbedded"><ul class="rx-nav pull-left"><li class="rx-nav-item rx-nav-logo"><img src="images/rackspace-logo-white.png"></li><li class="rx-nav-item"><a ng-if="accountName === \'hybrid\'" target="_blank" ng-href="{{myrackHostname}}">Back to MyRackspace</a> <a ng-if="accountName !== \'hybrid\'" target="_blank" ng-href="{{reachHostname}}">Back to Reach</a></li></ul><ul class="rx-nav pull-right"><li class="rx-nav-item"><a target="_blank" href="https://community.rackspace.com/feedback/default">Feedback</a></li><li class="rx-nav-item"><a target="_blank" ng-href="{{myrackHostname}}/portal/ticket/create">Create Ticket</a></li><li class="rx-nav-item active"><rx-action-menu text="Support"><ul class="actions-area"><li><a class="active" href="/">Notifications</a></li><li><a target="_blank" ng-href="{{myrackHostname}}/portal/ticket/index">Support Tickets</a></li></ul></rx-action-menu></li><li class="rx-nav-item"><rx-action-menu class="account-menu" text="{{user}}"><ul class="actions-area"><li><div>Account # {{accountNumber}}</div><div>{{accountName}}</div></li><li class="divider"></li><li><a target="_self" ng-href="{{logoutUrl}}">Logout</a></li></ul></rx-action-menu></li></ul></div><div class="rx-nav-primary" ng-if="routes.length > 0 && !isEmbedded"><ul class="rx-nav"><li class="rx-nav-item" ng-repeat="route in routes" ng-class="{\'active\': activePrimaryNavItem === \'components\'}"><rx-action-menu text="{{route.title}}" type="utility" ng-if="route.children && route.children.length > 0"><ul class="actions-area"><li ng-repeat="navItem in route.children"><a class="rs-dropdown-link" ng-href="{{navItem.href}}">{{navItem.linkText}}</a></li></ul></rx-action-menu><a ng-if="!route.children" ng-href="{{route.href}}">{{route.title}}</a></li></ul></div><div ng-transclude></div><div class="rx-push" ng-show="!isEmbedded"></div></div><div class="rx-footer" ng-show="!isEmbedded"><ul class="rx-nav"><li class="rx-nav-item">&copy; Rackspace, US</li><li class="rx-nav-item"><a target="_blank" href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a></li><li class="rx-nav-item"><a target="_blank" href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a></li></ul></div>');
+    '<div class="rx-app" ng-class="{embedded: isEmbedded}"><div class="rx-eyebrow" ng-show="!isEmbedded"><ul class="rx-nav pull-left"><li class="rx-nav-item rx-nav-logo"><img src="images/rackspace-logo-white.png"></li><li class="rx-nav-item" ng-if="portalName"><a target="_blank" ng-href="{{portalBaseUrl}}">Back to {{portalName}}</a></li></ul><ul class="rx-nav pull-right"><li class="rx-nav-item"><a target="_blank" href="https://community.rackspace.com/feedback/default">Feedback</a></li><li class="rx-nav-item"><a target="_blank" ng-href="{{createTicketUrl}}">Create Ticket</a></li><li class="rx-nav-item active"><rx-action-menu text="Support"><ul class="actions-area"><li><a class="active" href="/">Notifications</a></li><li><a target="_blank" ng-href="{{ticketsUrl}}">Support Tickets</a></li></ul></rx-action-menu></li><li class="rx-nav-item"><rx-action-menu class="account-menu" text="{{user}}"><ul class="actions-area"><li><div>Account # {{accountNumber}}</div><div>{{accountName}}</div></li><li class="divider"></li><li><a target="_self" ng-href="{{logoutUrl}}">Logout</a></li></ul></rx-action-menu></li></ul></div><div class="rx-nav-primary" ng-if="routes.length > 0 && !isEmbedded"><ul class="rx-nav"><li class="rx-nav-item" ng-repeat="route in routes" ng-class="{\'active\': activePrimaryNavItem === \'components\'}"><rx-action-menu text="{{route.title}}" type="utility" ng-if="route.children && route.children.length > 0"><ul class="actions-area"><li ng-repeat="navItem in route.children"><a class="rs-dropdown-link" ng-href="{{navItem.href}}">{{navItem.linkText}}</a></li></ul></rx-action-menu><a ng-if="!route.children" ng-href="{{route.href}}">{{route.title}}</a></li></ul></div><div ng-transclude></div><div class="rx-push" ng-show="!isEmbedded"></div></div><div class="rx-footer" ng-show="!isEmbedded"><ul class="rx-nav"><li class="rx-nav-item">&copy; Rackspace, US</li><li class="rx-nav-item"><a target="_blank" href="http://www.rackspace.com/information/legal/websiteterms" target="blank">Website Terms</a></li><li class="rx-nav-item"><a target="_blank" href="http://www.rackspace.com/information/legal/privacystatement" target="blank">Privacy Policy</a></li></ul></div>');
 }]);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {

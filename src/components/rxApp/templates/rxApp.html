@@ -2,14 +2,13 @@
   <div class="rx-eyebrow" ng-show="!isEmbedded">
     <ul class="rx-nav pull-left">
       <li class="rx-nav-item rx-nav-logo"><img src="images/rackspace-logo-white.png"></img></li>
-      <li class="rx-nav-item">
-        <a ng-if="accountName === 'hybrid'" target="_blank" ng-href="{{myrackHostname}}">Back to MyRackspace</a>
-        <a ng-if="accountName !== 'hybrid'" target="_blank" ng-href="{{reachHostname}}">Back to Reach</a>
+      <li class="rx-nav-item" ng-if="portalName">
+        <a target="_blank" ng-href="{{portalBaseUrl}}">Back to {{portalName}}</a>
       </li>
     </ul>
     <ul class="rx-nav pull-right">
       <li class="rx-nav-item"><a target="_blank" href="https://community.rackspace.com/feedback/default">Feedback</a></li>
-      <li class="rx-nav-item"><a target="_blank" ng-href="{{myrackHostname}}/portal/ticket/create">Create Ticket</a></li>
+      <li class="rx-nav-item"><a target="_blank" ng-href="{{createTicketUrl}}">Create Ticket</a></li>
       <li class="rx-nav-item active">
         <rx-action-menu text="Support">
           <ul class="actions-area">
@@ -17,7 +16,7 @@
               <a class="active" href="/">Notifications</a>
             </li>
             <li>
-              <a target="_blank" ng-href="{{myrackHostname}}/portal/ticket/index">Support Tickets</a>
+              <a target="_blank" ng-href="{{ticketsUrl}}">Support Tickets</a>
             </li>
           </ul>
         </rx-action-menu>
