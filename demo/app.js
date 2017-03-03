@@ -2,7 +2,7 @@ angular.module('demoApp', [
   'ngRoute',
   'encore.bridge'
 ])
-.config(function ($routeProvider, appRoutesProvider, rxUserData) {
+.config(function ($routeProvider, appRoutesProvider, rxUserDataProvider) {
   $routeProvider
   .when('/', {
     templateUrl: 'home.html'
@@ -96,11 +96,13 @@ angular.module('demoApp', [
     }]
   }];
 
-  _.assign(rxUserData, {
-      user: 'Barbra Streisand',
-      accountName: 'Company ABC',
-      accountNumber: 123456
-  });
+  rxUserDataProvider.getter = function ($window) {
+      return {
+          user: $window.username || 'Barbra Streisand',
+          accountName: 'Company ABC',
+          accountNumber: 123456
+      }
+  };
 })
 .run(function ($rootScope) {
   $rootScope.$on('$routeChangeSuccess', function (event, route) {

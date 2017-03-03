@@ -19,6 +19,9 @@ angular.module('encore.ui.rxApp')
       }
       scope.routes = appRoutes;
       _.assign(scope, rxUserData);
+      rxUserData.watch(function (newData) {
+          _.assign(scope, newData);
+      });
       scope.isEmbedded = $window.self !== $window.top;
     }
   };
