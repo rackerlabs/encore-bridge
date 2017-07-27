@@ -9,7 +9,8 @@
       "rxPopover",
       "rxRadio",
       "rxSortableColumn",
-      "rxStatusColumn"
+      "rxStatusColumn",
+      "rxPaginate"
     ],
     "elements": [
       "ActionMenu",
@@ -32,6 +33,13 @@
       "rxSortUtil",
       "rxStatusColumnIcons",
       "rxStatusMappings",
+      "Page",
+      "PageTracking",
+      "Paginate",
+      "PaginatedItemsSummary",
+      "rxPaginateUtils",
+      "rxPromiseNotifications",
+      "rxNotify",
       "rxTimePickerUtil"
     ]
   }
