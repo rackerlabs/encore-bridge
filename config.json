@@ -40,7 +40,8 @@
       "rxPaginateUtils",
       "rxPromiseNotifications",
       "rxNotify",
-      "rxTimePickerUtil"
+      "rxTimePickerUtil",
+      "rxSortUtil"
     ]
   }
 }
