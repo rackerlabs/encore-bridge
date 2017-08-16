@@ -6,11 +6,11 @@
       "rxApp",
       "rxCollapse",
       "rxForm",
+      "rxPaginate",
       "rxPopover",
       "rxRadio",
       "rxSortableColumn",
-      "rxStatusColumn",
-      "rxPaginate"
+      "rxStatusColumn"
     ],
     "elements": [
       "ActionMenu",
@@ -21,27 +21,27 @@
       "Tooltips"
     ],
     "utilities": [
-      "Session",
-      "TokenInterceptor",
-      "UnauthorizedInterceptor",
-      "UtcOffsets",
-      "rxAge",
-      "rxDOMHelper",
-      "rxLocalStorage",
-      "rxNestedElement",
-      "rxSortEmptyTop",
-      "rxSortUtil",
-      "rxStatusColumnIcons",
-      "rxStatusMappings",
       "Page",
       "PageTracking",
       "Paginate",
       "PaginatedItemsSummary",
+      "rxAge",
+      "rxDOMHelper",
+      "rxLocalStorage",
+      "rxNestedElement",
+      "rxNotify",
       "rxPaginateUtils",
       "rxPromiseNotifications",
-      "rxNotify",
+      "rxSortEmptyTop",
+      "rxSortUtil",
+      "rxSortUtil",
+      "rxStatusColumnIcons",
+      "rxStatusMappings",
       "rxTimePickerUtil",
-      "rxSortUtil"
+      "Session",
+      "TokenInterceptor",
+      "UnauthorizedInterceptor",
+      "UtcOffsets"
     ]
   }
 }

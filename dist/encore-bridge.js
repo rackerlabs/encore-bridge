@@ -1,41 +1,239 @@
-angular.module('encore.bridge', ['encore.ui.layout','encore.ui.rxApp','encore.ui.rxCollapse','encore.ui.rxForm','encore.ui.rxPopover','encore.ui.rxRadio','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.rxPaginate','encore.ui.utilities','encore.ui.elements']);
+angular.module('encore.bridge', ['encore.ui.layout','encore.ui.rxApp','encore.ui.rxCollapse','encore.ui.rxForm','encore.ui.rxPaginate','encore.ui.rxPopover','encore.ui.rxRadio','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.utilities','encore.ui.elements']);
 
 angular.module('encore.ui.utilities', []);
 
 angular.module('encore.ui.utilities')
 /**
- * @ngdoc service
- * @name utilities.service:rxSortUtil
+ * @ngdoc parameters
+ * @name utilities.constant:UtcOffsets
+ *
  * @description
- * Service which provided utility methods for sorting collections.
+ * List of known UTC Offset Values
+ * See https://en.wikipedia.org/wiki/List_of_UTC_time_offsets
+ *
+ * Utility service used by {@link elements.directive:rxTimePicker rxTimePicker}.
+ */
+.constant('UtcOffsets', [
+    '-12:00',
+    '-11:00',
+    '-10:00',
+    '-09:30',
+    '-09:00',
+    '-08:00',
+    '-07:00',
+    '-06:00',
+    '-05:00',
+    '-04:30',
+    '-04:00',
+    '-03:30',
+    '-03:00',
+    '-02:00',
+    '-01:00',
+    '+00:00',
+    '+01:00',
+    '+02:00',
+    '+03:00',
+    '+03:30',
+    '+04:00',
+    '+04:30',
+    '+05:00',
+    '+05:30',
+    '+05:45',
+    '+06:00',
+    '+06:30',
+    '+07:00',
+    '+08:00',
+    '+08:30',
+    '+08:45',
+    '+09:00',
+    '+09:30',
+    '+10:00',
+    '+10:30',
+    '+11:00',
+    '+12:00',
+    '+12:45',
+    '+13:00',
+    '+14:00',
+]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:UnauthorizedInterceptor
+ * @description
+ * Simple injector which will intercept HTTP responses. If a HTTP 401 response error code is returned,
+ * the ui redirects to `/login`.
+ *
+ * @requires $q
+ * @requires @window
+ * @requires utilities.service:Session
  *
  * @example
  * <pre>
- * rxSortUtil.getDefault() // returns a sort object with name as the default.
- * rxSortUtil.sortCol($scope, 'name') // sorts the collection based on the predicate
+ * angular.module('encoreApp', ['encore.ui'])
+ *     .config(function ($httpProvider) {
+ *         $httpProvider.interceptors.push('UnauthorizedInterceptor');
+ *     });
  * </pre>
  */
-.factory('rxSortUtil', function () {
-    var util = {};
+.factory('UnauthorizedInterceptor', ["$q", "$window", "Session", function ($q, $window, Session) {
+    var svc = {
+        redirectPath: function () {
+            // This brings in the entire relative URI (including the path
+            // specified in a <base /> tag), along with query params as a
+            // string.
+            // e.g https://www.google.com/search?q=woody+wood+pecker
+            // window.location.pathname = /search?q=woody+wood+pecker
+            return $window.location.pathname;
+        },
+        redirect: function (loginPath) {
+            loginPath = loginPath ? loginPath : '/login?redirect=';
+            $window.location = loginPath + encodeURIComponent(svc.redirectPath());
+        },
+        responseError: function (response) {
+            if (response.status === 401) {
+                Session.logout(); // Logs out user by removing token
+                svc.redirect();
+            }
 
-    util.getDefault = function (property, reversed) {
-        return { predicate: property, reverse: reversed };
-    };
-
-    util.sortCol = function ($scope, predicate) {
-        var reverse = ($scope.sort.predicate === predicate) ? !$scope.sort.reverse : false;
-        $scope.sort = { reverse: reverse, predicate: predicate };
-
-        // This execution should be moved outside of the scope for rxSortUtil
-        // already rxSortUtil.sortCol has to be wrapped, and can be implemented there
-        // rather than have rxSortUtil.sortCol check/expect for a pager to be present.
-        if ($scope.pager) {
-            $scope.pager.pageNumber = 0;
+            return $q.reject(response);
         }
     };
 
-    return util;
+    return svc;
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:TokenInterceptor
+ * @description
+ * Simple $http injector which will intercept http request and inject the
+ * Rackspace Identity's token into every http request.
+ *
+ * @requires rxSession.service:Session
+ *
+ * @example
+ * <pre>
+ * angular.module('encoreApp', ['encore.ui'])
+ *     .config(function ($httpProvider) {
+ *         $httpProvider.interceptors.push('TokenInterceptor');
+ *     });
+ * </pre>
+ */
+.provider('TokenInterceptor', function () {
+    var exclusionList = this.exclusionList = [ 'rackcdn.com' ];
+
+    this.$get = ["Session", "$document", function (Session, $document) {
+        var url = $document[0].createElement('a');
+        return {
+            request: function (config) {
+                // Don't add the X-Auth-Token if the request URL matches
+                // something in exclusionList
+                // We're specifically looking at hostnames, so we have to
+                // do the `createElement('a')` trick to turn the config.url
+                // into something with a `.hostname`
+                url.href = config.url;
+                var exclude = _.some(exclusionList, function (item) {
+                    if (_.contains(url.hostname, item)) {
+                        return true;
+                    }
+                });
+
+                if (!exclude) {
+                    config.headers['X-Auth-Token'] = Session.getTokenId();
+                }
+
+                return config;
+            }
+        };
+    }];
 });
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:Session
+ * @description
+ *
+ * Service for managing user session in encore-ui.
+ *
+ * @requires utilities.service:rxLocalStorage
+ *
+ * @example
+ * <pre>
+ * Session.getToken(); // Returns the stored token
+ * Session.storeToken(token); // Stores token
+ * Session.logout(); // Logs user off
+ * Session.isCurrent(); // Returns true/false if the token has expired.
+ * Session.isAuthenticated(); // Returns true/false if the user token is valid.
+ * </pre>
+ */
+.factory('Session', ["rxLocalStorage", function (rxLocalStorage) {
+    var TOKEN_ID = 'encoreSessionToken';
+    var session = {};
+
+    /**
+    * Dot walks the token without throwing an error.
+    * If key exists, returns value otherwise returns undefined.
+    */
+    session.getByKey = function (key) {
+        var tokenValue,
+            token = session.getToken(),
+            keys = key ? key.split('.') : undefined;
+
+        if (_.isEmpty(token) || !keys) {
+            return;
+        }
+
+        tokenValue = _.reduce(keys, function (val, key) {
+            return val ? val[key] : undefined;
+        }, token);
+
+        return tokenValue;
+    };
+
+    session.getToken = function () {
+        return rxLocalStorage.getObject(TOKEN_ID);
+    };
+
+    session.getTokenId = function () {
+        return session.getByKey('access.token.id');
+    };
+
+    session.getUserId = function () {
+        return session.getByKey('access.user.id');
+    };
+
+    session.getUserName = function () {
+        return session.getByKey('access.user.name');
+    };
+
+    session.storeToken = function (token) {
+        rxLocalStorage.setObject(TOKEN_ID, token);
+    };
+
+    session.logout = function () {
+        rxLocalStorage.removeItem(TOKEN_ID);
+    };
+
+    session.isCurrent = function () {
+        var expireDate = session.getByKey('access.token.expires');
+
+        if (expireDate) {
+            return new Date(expireDate) > _.now();
+        }
+
+        return false;
+    };
+
+    session.isAuthenticated = function () {
+        var token = session.getToken();
+        return _.isEmpty(token) ? false : session.isCurrent();
+    };
+
+    return session;
+}]);
 
 angular.module('encore.ui.utilities')
 /**
@@ -121,6 +319,520 @@ angular.module('encore.ui.utilities')
         viewFormat: viewFormat,
     };
 });//rxTimePickerUtil
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxStatusMappings
+ * @description
+ *
+ * A set of methods for creating mappings between a product's notion
+ * of statuses, and the status identifiers used in EncoreUI
+ *
+ * To accommodate different statuses, the `rxStatusMappings` factory includes
+ * methods for defining mappings from your own statuses to the six defined ones.
+ * The basic methods for this are `rxStatusMappings.addGlobal()` and
+ * `rxStatusMappings.addAPI()`.
+ *
+ * ## mapToActive()/mapToWarning()/mapToError()/mapToInfo()/mapToPending()
+ *
+ * While `.addGlobal()` and `.addAPI()` would be sufficient on their own,
+ * they can be slightly cumbersome. If you have a list of statuses that all
+ * need to get mapped to the same EncoreUI status, the mapping object will
+ * be forced to have repetition, leaving room for errors. For example,
+ * something like this:
+ *
+ * <pre>
+ * rxStatusMappings.addGlobal({
+ *     'BLOCKED': 'ERROR',
+ *     'SHUTDOWN': 'ERROR',
+ *     'FAILED': 'ERROR'
+ * });
+ * </pre>
+ *
+ * There is required repetition of `"ERROR"` in each pair, and there's always
+ * the chance of misspelling `"ERROR"`. Instead, we provide a utility method
+ * `mapToError` to help with this:
+ *
+ * <pre>
+ * rxStatusMappings.mapToError(['BLOCKED', 'SHUTDOWN', 'FAILED']);
+ * </pre>
+ *
+ * This has the advantage that it's shorter to type, eliminates the chance of
+ * mistyping or misassigning `"ERROR"`, and keeps all `"ERROR"` mappings
+ * physically grouped. With this, you could easily keep your mapping values
+ * in an Angular `.value` or `.constant`, and just pass them to these methods
+ * in your `.run()` method.
+ *
+ * There are equivalent `mapToWarning`, `mapToActive`, `mapToDisabled`,
+ * `mapToPending` and `mapToInfo` methods.
+ *
+ * All six of these methods can take an array or a single string as the first
+ * argument. The call above is equivalent to this group of individual calls:
+ *
+ * <pre>
+ * rxStatusMappings.mapToError('BLOCKED');
+ * rxStatusMappings.mapToError('SHUTDOWN');
+ * rxStatusMappings.mapToError('FAILED');
+ * </pre>
+ *
+ * All six can also take `api` as a second, optional parameter. Thus we could
+ * define the `rxStatusMappings.addAPI({ 'FOO': 'ERROR' }, 'z')` example from
+ * above as:
+ *
+ * <pre>
+ * rxStatusMappings.mapToError('FOO', 'z');
+ * </pre>
+ *
+ */
+.factory('rxStatusMappings', function () {
+    var globalMappings = {};
+    var apiMappings = {};
+    var rxStatusMappings = {};
+
+    var upperCaseCallback = function (objectValue, sourceValue) {
+        return sourceValue.toUpperCase();
+    };
+    /**
+     * @ngdoc function
+     * @name rxStatusMappings.addGlobal
+     * @methodOf utilities.service:rxStatusMappings
+     * @description
+     *
+     * Takes a full set of mappings to be used globally
+     *
+     * `rxStatusMappings.addGlobal()` takes an object as an argument, with the
+     * keys being your own product's statuses, and the values being one of the six
+     * internal statuses that it should map to. For example:
+     *
+     * <pre>
+     * rxStatusMappings.addGlobal({
+     *     'RUNNING': 'ACTIVE',
+     *     'STANDBY': 'INFO',
+     *     'SUSPENDED': 'WARNING',
+     *     'FAILURE': 'ERROR'
+     * });
+     * </pre>
+     *
+     * These mappings will be used throughout all instances of `rx-status-column`
+     * in your code.
+     *
+     * @param {String} mapping This is mapping with keys and values
+     */
+    rxStatusMappings.addGlobal = function (mapping) {
+        _.assign(globalMappings, mapping, upperCaseCallback);
+    };
+
+    /**
+     * @ngdoc function
+     * @name rxStatusMappings.addAPI
+     * @methodOf utilities.service:rxStatusMappings
+     * @description
+     *
+     * Create a mapping specific to a particular API. This will
+     * only be used when the directive receives the `api="..."`
+     * attribute
+     *
+     * Say that you are using three APIs in your product, `X`, `Y` and `Z`. Both
+     * `X` and `Y` define a status `"FOO"`, which you want to map to EncoreUI's
+     * `"WARNING"`. You can declare this  mapping with
+     * `rxStatusMappings.addGlobal({ 'FOO': 'WARNING' })`. But your API `Z` also
+     * returns a `"FOO"` status, which you need mapped to EncoreUI's
+     * `"ERROR"` status.
+     *
+     * You _could_ do a transformation in your product to convert the `"FOO"`
+     * from `Z` into something else, or you can make use of
+     * `rxStatusMappings.addAPI()`, as follows:
+     *
+     * <pre>
+     * rxStatusMappings.addAPI('z', { 'FOO': 'ERROR' });
+     * </pre>
+     *
+     * Then in your template code, you would use `rx-status-column` as:
+     *
+     * <pre>
+     * <td rx-status-column status="{{ status }}" api="z"></td>
+     * </pre>
+     *
+     * This will tell EncoreUI that it should first check if the passed in
+     * `status` was defined separately for an api `"z"`, and if so, to use that
+     * mapping. If `status` can't be found in the mappings defined for `"z"`,
+     * then it will fall back to the mappings you defined in your `.addGlobal()`
+     * call.
+     *
+     * @param {String} apiName This is api name of the mapping
+     * @param {String} mapping This is mapping with keys and values
+     */
+    rxStatusMappings.addAPI = function (apiName, mapping) {
+        var api = apiMappings[apiName] || {};
+        _.assign(api, mapping, upperCaseCallback);
+        apiMappings[apiName] = api;
+    };
+
+    var buildMapFunc = function (mapToString) {
+        return function (statusString, api) {
+            var obj = {};
+            if (_.isString(statusString)) {
+                obj[statusString] = mapToString;
+            } else if (_.isArray(statusString)) {
+                _.each(statusString, function (str) {
+                    obj[str] = mapToString;
+                });
+            }
+
+            if (api) {
+                rxStatusMappings.addAPI(api, obj);
+            } else {
+                rxStatusMappings.addGlobal(obj);
+            }
+        };
+    };
+
+    // All four of these map a string, or an array of strings,
+    // to the corresponding internal status (Active/Warning/Error/Info)
+    // Each can optionally take a string as the second parameter, indictating
+    // which api the mapping belongs to
+    rxStatusMappings.mapToActive = buildMapFunc('ACTIVE');
+    rxStatusMappings.mapToWarning = buildMapFunc('WARNING');
+    rxStatusMappings.mapToError = buildMapFunc('ERROR');
+    rxStatusMappings.mapToInfo = buildMapFunc('INFO');
+    rxStatusMappings.mapToPending = buildMapFunc('PENDING');
+    rxStatusMappings.mapToDisabled = buildMapFunc('DISABLED');
+
+    /**
+     * @ngdoc function
+     * @name rxStatusMappings.getInternalMapping
+     * @methodOf utilities.service:rxStatusMappings
+     * @description
+     *
+     * `rxStatusMappings` defines a `getInternalMapping(statusString, api)` method,
+     * which the framework uses to map a provided `status` string based on the
+     * mapping rules from all the methods above. It's intended for internal use,
+     * but there's nothing stopping you from using it if you find a need.
+     *
+     * If you ask it to map a string that is not registered for a mapping, it will
+     * return back that same string.
+     *
+     * @param {String} statusString This is status string based on mapping rules
+     * @param {String} api This is an api based on mapping rules
+     */
+    rxStatusMappings.getInternalMapping = function (statusString, api) {
+        if (_.has(apiMappings, api) && _.has(apiMappings[api], statusString)) {
+            return apiMappings[api][statusString];
+        }
+
+        var mapped = globalMappings[statusString];
+
+        return mapped ? mapped : statusString;
+    };
+
+    return rxStatusMappings;
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc object
+ * @name utilities.object:rxStatusColumnIcons
+ * @description
+ *
+ * Mapping of internal statuses to FontAwesome icons.
+ * The keys map to the names defined in rxStatusColumn.less
+ */
+.value('rxStatusColumnIcons', {
+    'ERROR': 'fa-ban',
+    'WARNING': 'fa-exclamation-triangle',
+    'INFO': 'fa-info-circle',
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxSortUtil
+ * @description
+ * Service which provided utility methods for sorting collections.
+ *
+ * @example
+ * <pre>
+ * rxSortUtil.getDefault() // returns a sort object with name as the default.
+ * rxSortUtil.sortCol($scope, 'name') // sorts the collection based on the predicate
+ * </pre>
+ */
+.factory('rxSortUtil', function () {
+    var util = {};
+
+    util.getDefault = function (property, reversed) {
+        return { predicate: property, reverse: reversed };
+    };
+
+    util.sortCol = function ($scope, predicate) {
+        var reverse = ($scope.sort.predicate === predicate) ? !$scope.sort.reverse : false;
+        $scope.sort = { reverse: reverse, predicate: predicate };
+
+        // This execution should be moved outside of the scope for rxSortUtil
+        // already rxSortUtil.sortCol has to be wrapped, and can be implemented there
+        // rather than have rxSortUtil.sortCol check/expect for a pager to be present.
+        if ($scope.pager) {
+            $scope.pager.pageNumber = 0;
+        }
+    };
+
+    return util;
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxSortUtil
+ * @description
+ * Service which provided utility methods for sorting collections.
+ *
+ * @example
+ * <pre>
+ * rxSortUtil.getDefault() // returns a sort object with name as the default.
+ * rxSortUtil.sortCol($scope, 'name') // sorts the collection based on the predicate
+ * </pre>
+ */
+.factory('rxSortUtil', function () {
+    var util = {};
+
+    util.getDefault = function (property, reversed) {
+        return { predicate: property, reverse: reversed };
+    };
+
+    util.sortCol = function ($scope, predicate) {
+        var reverse = ($scope.sort.predicate === predicate) ? !$scope.sort.reverse : false;
+        $scope.sort = { reverse: reverse, predicate: predicate };
+
+        // This execution should be moved outside of the scope for rxSortUtil
+        // already rxSortUtil.sortCol has to be wrapped, and can be implemented there
+        // rather than have rxSortUtil.sortCol check/expect for a pager to be present.
+        if ($scope.pager) {
+            $scope.pager.pageNumber = 0;
+        }
+    };
+
+    return util;
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc filter
+ * @name utilities.filter:rxSortEmptyTop
+ * @description
+ *
+ * Filter that moves rows with an empty predicate to the top of the column in
+ * ascending order, and to the bottom in descending order.
+ *
+ * @example
+ * ### Empty Sort
+ * <pre>
+ * var emptySort = [
+ *     { name: { firstName: 'Adam' } },
+ *     { }
+ * ];
+ * emptySort | rxSortEmptyTop 'name.firstName':false
+ * </pre>
+ * Will sort as [{}, { name: { firstName: 'Adam' } }].
+ *
+ * ### Null Sort
+ * <pre>
+ * var nullSort = [
+ *     { name: { firstName: 'Adam' } },
+ *     { name: { firstName: null }
+ * ];
+ * nullSort | rxSortEmptyTop 'name.firstName':true
+ * </pre>
+ * Will sort as [{ name: { firstName: 'Adam' } }, {}]
+ */
+.filter('rxSortEmptyTop', ['$filter', '$parse', function ($filter, $parse) {
+    return function (array, key, reverse) {
+
+        var predicateGetter = $parse(key);
+
+        var sortFn = function (item) {
+            return predicateGetter(item) || '';
+        };
+
+        return $filter('orderBy')(array, sortFn, reverse);
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxPromiseNotifications
+ * @description Manages displaying messages for a promise.
+ *
+ * It is a common pattern with API requests that you show a loading message when an action is requested, followed
+ * by either a _success_ or _failure_ message depending on the result of the call.  `rxPromiseNotifications` is the
+ * service created for this pattern.
+ *
+ * @example
+ * <pre>
+ * rxPromiseNotifications.add($scope.deferred.promise, {
+ *     loading: 'Loading Message',
+ *     success: 'Success Message',
+ *     error: 'Error Message'
+ * });
+ * </pre>
+ */
+.factory('rxPromiseNotifications', ["rxNotify", "$rootScope", "$q", "$interpolate", function (rxNotify, $rootScope, $q, $interpolate) {
+    var scope = $rootScope.$new();
+
+    /**
+     * Removes 'loading' message from stack
+     * @private
+     * @this Scope used for storing messages data
+     */
+    var dismissLoading = function () {
+        if (this.loadingMsg) {
+            rxNotify.dismiss(this.loadingMsg);
+        }
+    };
+
+    /**
+     * Shows either a success or error message
+     * @private
+     * @this Scope used for storing messages data
+     * @param {string} msgType Message type to be displayed
+     * @param {Object} response Data that's returned from the promise
+     */
+    var showMessage = function (msgType, response) {
+        if (msgType in this.msgs && !this.isCancelled) {
+            // convert any bound properties into a string based on obj from result
+            var exp = $interpolate(this.msgs[msgType]);
+            var msg = exp(response);
+
+            var msgOpts = {
+                type: msgType
+            };
+
+            // if a custom stack is passed in, specify that for the message options
+            if (this.stack) {
+                msgOpts.stack = this.stack;
+            }
+
+            rxNotify.add(msg, msgOpts);
+        }
+    };
+
+    /**
+     * Cancels all messages from displaying
+     * @private
+     * @this Scope used for storing messages data
+     */
+    var cancelMessages = function () {
+        this.isCancelled = true;
+        this.deferred.reject();
+    };
+
+    /**
+     * @name add
+     * @ngdoc method
+     * @methodOf utilities.service:rxPromiseNotifications
+     * @description
+     * @param {Object} promise
+     * The promise to attach to for showing success/error messages
+     * @param {Object} msgs
+     * The messages to display. Can take in HTML/expressions
+     * @param {String} msgs.loading
+     * Loading message to show while promise is unresolved
+     * @param {String=} msgs.success
+     * Success message to show on successful promise resolve
+     * @param {String=} msgs.error
+     * Error message to show on promise rejection
+     * @param {String=} [stack='page']
+     * What stack to add to
+     */
+    var add = function (promise, msgs, stack) {
+        var deferred = $q.defer();
+
+        var uid = _.uniqueId('promise_');
+
+        scope[uid] = {
+            isCancelled: false,
+            msgs: msgs,
+            stack: stack
+        };
+
+        // add loading message to page
+        var loadingOpts = {
+            loading: true
+        };
+
+        if (stack) {
+            loadingOpts.stack = stack;
+        }
+
+        if (msgs.loading) {
+            scope[uid].loadingMsg = rxNotify.add(msgs.loading, loadingOpts);
+        }
+
+        // bind promise to show message actions
+        deferred.promise
+            .then(showMessage.bind(scope[uid], 'success'), showMessage.bind(scope[uid], 'error'))
+            .finally(dismissLoading.bind(scope[uid]));
+
+        // react based on promise passed in
+        promise.then(function (response) {
+            deferred.resolve(response);
+        }, function (reason) {
+            deferred.reject(reason);
+        });
+
+        // if page change, cancel everything
+        $rootScope.$on('$routeChangeStart', cancelMessages.bind(scope[uid]));
+
+        // attach deferred to scope for later access
+        scope[uid].deferred = deferred;
+
+        return scope[uid];
+    };
+
+    return {
+        add: add
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxPaginateUtils
+ * @description
+ * A few utilities to calculate first, last, and number of items.
+ */
+.factory('rxPaginateUtils', function () {
+    var rxPaginateUtils = {};
+
+    rxPaginateUtils.firstAndLast = function (pageNumber, itemsPerPage, totalNumItems) {
+        var first = pageNumber * itemsPerPage;
+        var added = first + itemsPerPage;
+        var last = (added > totalNumItems) ? totalNumItems : added;
+
+        return {
+            first: first,
+            last: last,
+        };
+
+    };
+
+    // Given the user requested pageNumber and itemsPerPage, and the number of items we'll
+    // ask a paginated API for (serverItemsPerPage), calculate what page number the API
+    // should be asked for, how and far of an offset to use to slice into the returned items.
+    // It is expected that authors of getItems() functions will use this, and do the slice themselves
+    // before resolving getItems()
+    rxPaginateUtils.calculateApiVals = function (pageNumber, itemsPerPage, serverItemsPerPage) {
+        var serverPageNumber = Math.floor(pageNumber * itemsPerPage / serverItemsPerPage);
+        var offset = pageNumber * itemsPerPage - serverItemsPerPage * serverPageNumber;
+
+        return {
+            serverPageNumber: serverPageNumber,
+            offset: offset
+        };
+    };
+
+    return rxPaginateUtils;
+});
 
 angular.module('encore.ui.utilities')
 /**
@@ -478,178 +1190,364 @@ angular.module('encore.ui.utilities')
 angular.module('encore.ui.utilities')
 /**
  * @ngdoc service
- * @name utilities.service:rxPromiseNotifications
- * @description Manages displaying messages for a promise.
+ * @name utilities.service:rxNestedElement
+ * @description
+ * Helper function to aid in the creation of boilerplate DDO definitions
+ * required to validate nested custom elements.
  *
- * It is a common pattern with API requests that you show a loading message when an action is requested, followed
- * by either a _success_ or _failure_ message depending on the result of the call.  `rxPromiseNotifications` is the
- * service created for this pattern.
+ * @param {Object=} opts - Options to merge with default DDO definitions
+ * @param {String} opts.parent - Parent directive name
+ * (i.e. defined NestedElement is an immediate child of this parent element)
+ *
+ * @return {Object} Directive Definition Object for a rxNestedElement
  *
  * @example
  * <pre>
- * rxPromiseNotifications.add($scope.deferred.promise, {
- *     loading: 'Loading Message',
- *     success: 'Success Message',
- *     error: 'Error Message'
+ * angular.module('myApp', [])
+ * .directive('parentElement', function (rxNestedElement) {
+ *   return rxNestedElement();
+ * })
+ * .directive('childElement', function (rxNestedElement) {
+ *   return rxNestedElement({
+ *      parent: 'parentElement'
+ *   });
  * });
  * </pre>
  */
-.factory('rxPromiseNotifications', ["rxNotify", "$rootScope", "$q", "$interpolate", function (rxNotify, $rootScope, $q, $interpolate) {
-    var scope = $rootScope.$new();
+.factory('rxNestedElement', function () {
+    return function (opts) {
+        opts = opts || {};
 
-    /**
-     * Removes 'loading' message from stack
-     * @private
-     * @this Scope used for storing messages data
-     */
-    var dismissLoading = function () {
-        if (this.loadingMsg) {
-            rxNotify.dismiss(this.loadingMsg);
-        }
-    };
-
-    /**
-     * Shows either a success or error message
-     * @private
-     * @this Scope used for storing messages data
-     * @param {string} msgType Message type to be displayed
-     * @param {Object} response Data that's returned from the promise
-     */
-    var showMessage = function (msgType, response) {
-        if (msgType in this.msgs && !this.isCancelled) {
-            // convert any bound properties into a string based on obj from result
-            var exp = $interpolate(this.msgs[msgType]);
-            var msg = exp(response);
-
-            var msgOpts = {
-                type: msgType
-            };
-
-            // if a custom stack is passed in, specify that for the message options
-            if (this.stack) {
-                msgOpts.stack = this.stack;
-            }
-
-            rxNotify.add(msg, msgOpts);
-        }
-    };
-
-    /**
-     * Cancels all messages from displaying
-     * @private
-     * @this Scope used for storing messages data
-     */
-    var cancelMessages = function () {
-        this.isCancelled = true;
-        this.deferred.reject();
-    };
-
-    /**
-     * @name add
-     * @ngdoc method
-     * @methodOf utilities.service:rxPromiseNotifications
-     * @description
-     * @param {Object} promise
-     * The promise to attach to for showing success/error messages
-     * @param {Object} msgs
-     * The messages to display. Can take in HTML/expressions
-     * @param {String} msgs.loading
-     * Loading message to show while promise is unresolved
-     * @param {String=} msgs.success
-     * Success message to show on successful promise resolve
-     * @param {String=} msgs.error
-     * Error message to show on promise rejection
-     * @param {String=} [stack='page']
-     * What stack to add to
-     */
-    var add = function (promise, msgs, stack) {
-        var deferred = $q.defer();
-
-        var uid = _.uniqueId('promise_');
-
-        scope[uid] = {
-            isCancelled: false,
-            msgs: msgs,
-            stack: stack
+        var defaults = {
+            restrict: 'E',
+            /*
+             * must be defined for a child element to verify
+             * correct hierarchy
+             */
+            controller: angular.noop
         };
 
-        // add loading message to page
-        var loadingOpts = {
-            loading: true
-        };
-
-        if (stack) {
-            loadingOpts.stack = stack;
+        if (angular.isDefined(opts.parent)) {
+            opts.require = '^' + opts.parent;
+            /*
+             * bare minimum function definition needed for "require"
+             * validation logic
+             *
+             * NOTE: `angular.noop` and `_.noop` WILL NOT trigger validation
+             */
+            opts.link = function () {};
         }
 
-        if (msgs.loading) {
-            scope[uid].loadingMsg = rxNotify.add(msgs.loading, loadingOpts);
-        }
+        return _.defaults(opts, defaults);
+    };
+});
 
-        // bind promise to show message actions
-        deferred.promise
-            .then(showMessage.bind(scope[uid], 'success'), showMessage.bind(scope[uid], 'error'))
-            .finally(dismissLoading.bind(scope[uid]));
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxLocalStorage
+ * @description
+ * A simple wrapper for injecting the global variable `localStorage`
+ * for storing values in the browser's local storage object. This service is similar to Angular's
+ * `$window` and `$document` services.  The API works the same as the W3C's
+ * specification provided at: https://html.spec.whatwg.org/multipage/webstorage.html.
+ * This service also includes helper functions for getting and setting objects.
+ *
+ * @example
+ * <pre>
+ * rxLocalStorage.setItem('Batman', 'Robin'); // no return value
+ * rxLocalStorage.key(0); // returns 'Batman'
+ * rxLocalStorage.getItem('Batman'); // returns 'Robin'
+ * rxLocalStorage.removeItem('Batman'); // no return value
+ * rxLocalStorage.setObject('hero', {name:'Batman'}); // no return value
+ * rxLocalStorage.getObject('hero'); // returns { name: 'Batman'}
+ * rxLocalStorage.clear(); // no return value
+ * </pre>
+ */
+.service('rxLocalStorage', ["$window", function ($window) {
+    var localStorage = $window.localStorage;
+    if ($window.self !== $window.top && $window.top.localStorage) {
+        localStorage = $window.top.localStorage;
+    }
 
-        // react based on promise passed in
-        promise.then(function (response) {
-            deferred.resolve(response);
-        }, function (reason) {
-            deferred.reject(reason);
-        });
-
-        // if page change, cancel everything
-        $rootScope.$on('$routeChangeStart', cancelMessages.bind(scope[uid]));
-
-        // attach deferred to scope for later access
-        scope[uid].deferred = deferred;
-
-        return scope[uid];
+    this.setItem = function (key, value) {
+        localStorage.setItem(key, value);
     };
 
-    return {
-        add: add
+    this.getItem = function (key) {
+        return localStorage.getItem(key);
+    };
+
+    this.key = function (key) {
+        return localStorage.key(key);
+    };
+
+    this.removeItem = function (key) {
+        localStorage.removeItem(key);
+    };
+
+    this.clear = function () {
+        localStorage.clear();
+    };
+
+    this.__defineGetter__('length', function () {
+        return localStorage.length;
+    });
+
+    this.setObject = function (key, val) {
+        var value = _.isObject(val) || _.isArray(val) ? JSON.stringify(val) : val;
+        this.setItem(key, value);
+    };
+
+    this.getObject = function (key) {
+        var item = localStorage.getItem(key);
+        try {
+            item = JSON.parse(item);
+        } catch (error) {
+            return item;
+        }
+
+        return item;
     };
 }]);
 
 angular.module('encore.ui.utilities')
 /**
  * @ngdoc service
- * @name utilities.service:rxPaginateUtils
+ * @name utilities.service:rxDOMHelper
  * @description
- * A few utilities to calculate first, last, and number of items.
+ * A small set of functions to provide some functionality
+ * that isn't present in [Angular's jQuery-lite](https://docs.angularjs.org/api/ng/function/angular.element),
+ * and other DOM-related functions that are useful.
+ *
+ * **NOTE:** All methods take jQuery-lite wrapped elements as arguments.
  */
-.factory('rxPaginateUtils', function () {
-    var rxPaginateUtils = {};
-
-    rxPaginateUtils.firstAndLast = function (pageNumber, itemsPerPage, totalNumItems) {
-        var first = pageNumber * itemsPerPage;
-        var added = first + itemsPerPage;
-        var last = (added > totalNumItems) ? totalNumItems : added;
-
-        return {
-            first: first,
-            last: last,
-        };
-
+.factory('rxDOMHelper', ["$document", "$window", function ($document, $window) {
+    var scrollTop = function () {
+        // Safari and Chrome both use body.scrollTop, but Firefox needs
+        // documentElement.scrollTop
+        var doc = $document[0];
+        var scrolltop = $window.pageYOffset || doc.body.scrollTop || doc.documentElement.scrollTop || 0;
+        return scrolltop;
     };
 
-    // Given the user requested pageNumber and itemsPerPage, and the number of items we'll
-    // ask a paginated API for (serverItemsPerPage), calculate what page number the API
-    // should be asked for, how and far of an offset to use to slice into the returned items.
-    // It is expected that authors of getItems() functions will use this, and do the slice themselves
-    // before resolving getItems()
-    rxPaginateUtils.calculateApiVals = function (pageNumber, itemsPerPage, serverItemsPerPage) {
-        var serverPageNumber = Math.floor(pageNumber * itemsPerPage / serverItemsPerPage);
-        var offset = pageNumber * itemsPerPage - serverItemsPerPage * serverPageNumber;
-
-        return {
-            serverPageNumber: serverPageNumber,
-            offset: offset
-        };
+    var offset = function (elm) {
+        //http://cvmlrobotics.blogspot.co.at/2013/03/angularjs-get-element-offset-position.html
+        var rawDom = elm[0];
+        var _x = 0;
+        var _y = 0;
+        var doc = $document[0];
+        var body = doc.documentElement || doc.body;
+        var scrollX = $window.pageXOffset || body.scrollLeft;
+        var scrollY = scrollTop();
+        var rect = rawDom.getBoundingClientRect();
+        _x = rect.left + scrollX;
+        _y = rect.top + scrollY;
+        return { left: _x, top: _y };
     };
 
-    return rxPaginateUtils;
+    var style = function (elem) {
+        if (elem instanceof angular.element) {
+            elem = elem[0];
+        }
+        return $window.getComputedStyle(elem);
+    };
+
+    var width = function (elem) {
+        return style(elem).width;
+    };
+
+    var height = function (elem) {
+        return style(elem).height;
+    };
+
+    var shouldFloat = function (elem, maxHeight) {
+        var elemOffset = offset(elem),
+            scrolltop = scrollTop();
+
+        return ((scrolltop > elemOffset.top) && (scrolltop < elemOffset.top + maxHeight));
+    };
+
+    // An implementation of wrapAll, based on
+    // http://stackoverflow.com/a/13169465
+    // Takes a raw DOM `newParent`, and moves all of `elms` (either
+    // a single element or an array of elements) into it. It then places
+    // `newParent` in the location that elms[0] was originally in
+    var wrapAll = function (newParent, elms) {
+        // Figure out if it's one element or an array
+        var isGroupParent = ['SELECT', 'FORM'].indexOf(elms.tagName) !== -1;
+        var el = (elms.length && !isGroupParent) ? elms[0] : elms;
+
+        // cache the current parent node and sibling
+        // of the first element
+        var parentNode = el.parentNode;
+        var sibling = el.nextSibling;
+
+        // wrap the first element. This automatically
+        // removes it from its parent
+        newParent.appendChild(el);
+
+        // If there are other elements, wrap them. Each time
+        // it will remove the element from its current parent,
+        // and also from the `elms` array
+        if (!isGroupParent) {
+            while (elms.length) {
+                newParent.appendChild(elms[0]);
+            }
+        }
+
+        // If there was a sibling to the first element,
+        // insert newParent right before it. Otherwise
+        // just add it to parentNode
+        if (sibling) {
+            parentNode.insertBefore(newParent, sibling);
+        } else {
+            parentNode.appendChild(newParent);
+        }
+    };
+
+    // bind `f` to the scroll event
+    var onscroll = function (f) {
+        angular.element($window).bind('scroll', f);
+    };
+
+    var find = function (elem, selector) {
+        return angular.element(elem[0].querySelector(selector));
+    };
+
+    return {
+        offset: offset,
+        scrollTop: scrollTop,
+        width: width,
+        height: height,
+        shouldFloat: shouldFloat,
+        onscroll: onscroll,
+        find: find,
+        wrapAll: wrapAll
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc filter
+ * @name utilities.filter:rxAge
+ * @description
+ * Several filters are available to parse dates.
+ *
+ * ## Two Digit Display
+ * 1. You can just have it use the default abbreviated method and it truncates it
+ *  to the two largest units.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageHours}} &rarr; {{ageHours | rxAge}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Tue Sep 22 2015 00:44:00 GMT-0500 (CDT) → 10h 30m`
+ *
+ * ## Full Word Representation
+ * 2. You can also pass in a second value of `true` and have it expand the units
+ *  from the first letter to their full word representation.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageHours}} &rarr; {{ageHours | rxAge:true}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Tue Sep 22 2015 00:35:30 GMT-0500 (CDT) → 10 hours, 33 minutes`
+ *
+ * ## Mulitple Digits
+ * 3. Or you can pass in a number from `1` to `3` as the second value to allow for
+ *  different amounts of units.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageYears}} &rarr; {{ageYears | rxAge:3}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Sun Sep 07 2014 08:46:05 GMT-0500 (CDT) → 380d 2h 27m`
+ *
+ * ## Multiple Argument Usage
+ * 4. **OR** you can pass in a number as the second argument and `true` as the
+ *    third argument to combine these two effects.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageMonths}} &rarr; {{ageMonths | rxAge:3:true}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Thu Aug 13 2015 06:22:05 GMT-0500 (CDT) → 40 days, 4 hours, 49 minutes`
+ *
+ *
+ * **NOTE:** This component requires [moment.js](http://momentjs.com/) to parse, manipulate, and
+ * display dates which is provided by Encore Framework.
+ */
+.filter('rxAge', function () {
+    return function (dateString, maxUnits, verbose) {
+        if (!dateString) {
+            return 'Unavailable';
+        } else if (dateString === 'z') {
+            return '--';
+        }
+
+        var now = moment();
+        var date = moment(new Date(dateString));
+        var diff = now.diff(date);
+        var duration = moment.duration(diff);
+        var days = parseInt(duration.asDays(), 10);
+        var hours = parseInt(duration.asHours(), 10);
+        var mins = parseInt(duration.asMinutes(), 10);
+        var age = [];
+
+        if (_.isBoolean(maxUnits)) {
+            // if maxUnits is a boolean, then we assume it's meant to be the verbose setting
+            verbose = maxUnits;
+        } else if (!_.isBoolean(verbose)) {
+            // otherwise, if verbose isn't set, default to false
+            verbose =  false;
+        }
+
+        // This initialization has to happen AFTER verbose init so that we can
+        // use the original passed in value.
+        maxUnits = (_.isNumber(maxUnits)) ? maxUnits : 2;
+
+        var dateUnits = [days, hours - (24 * days), mins - (60 * hours)];
+        var suffixes = ['d', 'h', 'm'];
+
+        if (verbose) {
+            suffixes = [' day', ' hour', ' minute'];
+
+            _.forEach(suffixes, function (suffix, index) {
+                suffixes[index] += ((dateUnits[index] !== 1) ? 's' : '');
+            });
+        }
+
+        if (days > 0) {
+            age.push({ value: days, suffix: suffixes[0] });
+        }
+
+        if (hours > 0) {
+            age.push({ value: hours - (24 * days), suffix: suffixes[1] });
+        }
+
+        age.push({ value: mins - (60 * hours), suffix: suffixes[2] });
+
+        return _.map(age.slice(0, maxUnits), function (dateUnit, index, listOfAges) {
+            if (index === listOfAges.length - 1) {
+                return Math.round(dateUnit.value) + dateUnit.suffix;
+            } else {
+                return Math.floor(dateUnit.value) + dateUnit.suffix;
+            }
+        }).join((verbose) ? ', ' : ' ');
+    };
 });
 
 angular.module('encore.ui.utilities')
@@ -1028,904 +1926,6 @@ angular.module('encore.ui.utilities')
 
         return displayPages;
     };
-}]);
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc service
- * @name utilities.service:rxStatusMappings
- * @description
- *
- * A set of methods for creating mappings between a product's notion
- * of statuses, and the status identifiers used in EncoreUI
- *
- * To accommodate different statuses, the `rxStatusMappings` factory includes
- * methods for defining mappings from your own statuses to the six defined ones.
- * The basic methods for this are `rxStatusMappings.addGlobal()` and
- * `rxStatusMappings.addAPI()`.
- *
- * ## mapToActive()/mapToWarning()/mapToError()/mapToInfo()/mapToPending()
- *
- * While `.addGlobal()` and `.addAPI()` would be sufficient on their own,
- * they can be slightly cumbersome. If you have a list of statuses that all
- * need to get mapped to the same EncoreUI status, the mapping object will
- * be forced to have repetition, leaving room for errors. For example,
- * something like this:
- *
- * <pre>
- * rxStatusMappings.addGlobal({
- *     'BLOCKED': 'ERROR',
- *     'SHUTDOWN': 'ERROR',
- *     'FAILED': 'ERROR'
- * });
- * </pre>
- *
- * There is required repetition of `"ERROR"` in each pair, and there's always
- * the chance of misspelling `"ERROR"`. Instead, we provide a utility method
- * `mapToError` to help with this:
- *
- * <pre>
- * rxStatusMappings.mapToError(['BLOCKED', 'SHUTDOWN', 'FAILED']);
- * </pre>
- *
- * This has the advantage that it's shorter to type, eliminates the chance of
- * mistyping or misassigning `"ERROR"`, and keeps all `"ERROR"` mappings
- * physically grouped. With this, you could easily keep your mapping values
- * in an Angular `.value` or `.constant`, and just pass them to these methods
- * in your `.run()` method.
- *
- * There are equivalent `mapToWarning`, `mapToActive`, `mapToDisabled`,
- * `mapToPending` and `mapToInfo` methods.
- *
- * All six of these methods can take an array or a single string as the first
- * argument. The call above is equivalent to this group of individual calls:
- *
- * <pre>
- * rxStatusMappings.mapToError('BLOCKED');
- * rxStatusMappings.mapToError('SHUTDOWN');
- * rxStatusMappings.mapToError('FAILED');
- * </pre>
- *
- * All six can also take `api` as a second, optional parameter. Thus we could
- * define the `rxStatusMappings.addAPI({ 'FOO': 'ERROR' }, 'z')` example from
- * above as:
- *
- * <pre>
- * rxStatusMappings.mapToError('FOO', 'z');
- * </pre>
- *
- */
-.factory('rxStatusMappings', function () {
-    var globalMappings = {};
-    var apiMappings = {};
-    var rxStatusMappings = {};
-
-    var upperCaseCallback = function (objectValue, sourceValue) {
-        return sourceValue.toUpperCase();
-    };
-    /**
-     * @ngdoc function
-     * @name rxStatusMappings.addGlobal
-     * @methodOf utilities.service:rxStatusMappings
-     * @description
-     *
-     * Takes a full set of mappings to be used globally
-     *
-     * `rxStatusMappings.addGlobal()` takes an object as an argument, with the
-     * keys being your own product's statuses, and the values being one of the six
-     * internal statuses that it should map to. For example:
-     *
-     * <pre>
-     * rxStatusMappings.addGlobal({
-     *     'RUNNING': 'ACTIVE',
-     *     'STANDBY': 'INFO',
-     *     'SUSPENDED': 'WARNING',
-     *     'FAILURE': 'ERROR'
-     * });
-     * </pre>
-     *
-     * These mappings will be used throughout all instances of `rx-status-column`
-     * in your code.
-     *
-     * @param {String} mapping This is mapping with keys and values
-     */
-    rxStatusMappings.addGlobal = function (mapping) {
-        _.assign(globalMappings, mapping, upperCaseCallback);
-    };
-
-    /**
-     * @ngdoc function
-     * @name rxStatusMappings.addAPI
-     * @methodOf utilities.service:rxStatusMappings
-     * @description
-     *
-     * Create a mapping specific to a particular API. This will
-     * only be used when the directive receives the `api="..."`
-     * attribute
-     *
-     * Say that you are using three APIs in your product, `X`, `Y` and `Z`. Both
-     * `X` and `Y` define a status `"FOO"`, which you want to map to EncoreUI's
-     * `"WARNING"`. You can declare this  mapping with
-     * `rxStatusMappings.addGlobal({ 'FOO': 'WARNING' })`. But your API `Z` also
-     * returns a `"FOO"` status, which you need mapped to EncoreUI's
-     * `"ERROR"` status.
-     *
-     * You _could_ do a transformation in your product to convert the `"FOO"`
-     * from `Z` into something else, or you can make use of
-     * `rxStatusMappings.addAPI()`, as follows:
-     *
-     * <pre>
-     * rxStatusMappings.addAPI('z', { 'FOO': 'ERROR' });
-     * </pre>
-     *
-     * Then in your template code, you would use `rx-status-column` as:
-     *
-     * <pre>
-     * <td rx-status-column status="{{ status }}" api="z"></td>
-     * </pre>
-     *
-     * This will tell EncoreUI that it should first check if the passed in
-     * `status` was defined separately for an api `"z"`, and if so, to use that
-     * mapping. If `status` can't be found in the mappings defined for `"z"`,
-     * then it will fall back to the mappings you defined in your `.addGlobal()`
-     * call.
-     *
-     * @param {String} apiName This is api name of the mapping
-     * @param {String} mapping This is mapping with keys and values
-     */
-    rxStatusMappings.addAPI = function (apiName, mapping) {
-        var api = apiMappings[apiName] || {};
-        _.assign(api, mapping, upperCaseCallback);
-        apiMappings[apiName] = api;
-    };
-
-    var buildMapFunc = function (mapToString) {
-        return function (statusString, api) {
-            var obj = {};
-            if (_.isString(statusString)) {
-                obj[statusString] = mapToString;
-            } else if (_.isArray(statusString)) {
-                _.each(statusString, function (str) {
-                    obj[str] = mapToString;
-                });
-            }
-
-            if (api) {
-                rxStatusMappings.addAPI(api, obj);
-            } else {
-                rxStatusMappings.addGlobal(obj);
-            }
-        };
-    };
-
-    // All four of these map a string, or an array of strings,
-    // to the corresponding internal status (Active/Warning/Error/Info)
-    // Each can optionally take a string as the second parameter, indictating
-    // which api the mapping belongs to
-    rxStatusMappings.mapToActive = buildMapFunc('ACTIVE');
-    rxStatusMappings.mapToWarning = buildMapFunc('WARNING');
-    rxStatusMappings.mapToError = buildMapFunc('ERROR');
-    rxStatusMappings.mapToInfo = buildMapFunc('INFO');
-    rxStatusMappings.mapToPending = buildMapFunc('PENDING');
-    rxStatusMappings.mapToDisabled = buildMapFunc('DISABLED');
-
-    /**
-     * @ngdoc function
-     * @name rxStatusMappings.getInternalMapping
-     * @methodOf utilities.service:rxStatusMappings
-     * @description
-     *
-     * `rxStatusMappings` defines a `getInternalMapping(statusString, api)` method,
-     * which the framework uses to map a provided `status` string based on the
-     * mapping rules from all the methods above. It's intended for internal use,
-     * but there's nothing stopping you from using it if you find a need.
-     *
-     * If you ask it to map a string that is not registered for a mapping, it will
-     * return back that same string.
-     *
-     * @param {String} statusString This is status string based on mapping rules
-     * @param {String} api This is an api based on mapping rules
-     */
-    rxStatusMappings.getInternalMapping = function (statusString, api) {
-        if (_.has(apiMappings, api) && _.has(apiMappings[api], statusString)) {
-            return apiMappings[api][statusString];
-        }
-
-        var mapped = globalMappings[statusString];
-
-        return mapped ? mapped : statusString;
-    };
-
-    return rxStatusMappings;
-});
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc object
- * @name utilities.object:rxStatusColumnIcons
- * @description
- *
- * Mapping of internal statuses to FontAwesome icons.
- * The keys map to the names defined in rxStatusColumn.less
- */
-.value('rxStatusColumnIcons', {
-    'ERROR': 'fa-ban',
-    'WARNING': 'fa-exclamation-triangle',
-    'INFO': 'fa-info-circle',
-});
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc service
- * @name utilities.service:rxSortUtil
- * @description
- * Service which provided utility methods for sorting collections.
- *
- * @example
- * <pre>
- * rxSortUtil.getDefault() // returns a sort object with name as the default.
- * rxSortUtil.sortCol($scope, 'name') // sorts the collection based on the predicate
- * </pre>
- */
-.factory('rxSortUtil', function () {
-    var util = {};
-
-    util.getDefault = function (property, reversed) {
-        return { predicate: property, reverse: reversed };
-    };
-
-    util.sortCol = function ($scope, predicate) {
-        var reverse = ($scope.sort.predicate === predicate) ? !$scope.sort.reverse : false;
-        $scope.sort = { reverse: reverse, predicate: predicate };
-
-        // This execution should be moved outside of the scope for rxSortUtil
-        // already rxSortUtil.sortCol has to be wrapped, and can be implemented there
-        // rather than have rxSortUtil.sortCol check/expect for a pager to be present.
-        if ($scope.pager) {
-            $scope.pager.pageNumber = 0;
-        }
-    };
-
-    return util;
-});
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc filter
- * @name utilities.filter:rxSortEmptyTop
- * @description
- *
- * Filter that moves rows with an empty predicate to the top of the column in
- * ascending order, and to the bottom in descending order.
- *
- * @example
- * ### Empty Sort
- * <pre>
- * var emptySort = [
- *     { name: { firstName: 'Adam' } },
- *     { }
- * ];
- * emptySort | rxSortEmptyTop 'name.firstName':false
- * </pre>
- * Will sort as [{}, { name: { firstName: 'Adam' } }].
- *
- * ### Null Sort
- * <pre>
- * var nullSort = [
- *     { name: { firstName: 'Adam' } },
- *     { name: { firstName: null }
- * ];
- * nullSort | rxSortEmptyTop 'name.firstName':true
- * </pre>
- * Will sort as [{ name: { firstName: 'Adam' } }, {}]
- */
-.filter('rxSortEmptyTop', ['$filter', '$parse', function ($filter, $parse) {
-    return function (array, key, reverse) {
-
-        var predicateGetter = $parse(key);
-
-        var sortFn = function (item) {
-            return predicateGetter(item) || '';
-        };
-
-        return $filter('orderBy')(array, sortFn, reverse);
-    };
-}]);
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc service
- * @name utilities.service:rxNestedElement
- * @description
- * Helper function to aid in the creation of boilerplate DDO definitions
- * required to validate nested custom elements.
- *
- * @param {Object=} opts - Options to merge with default DDO definitions
- * @param {String} opts.parent - Parent directive name
- * (i.e. defined NestedElement is an immediate child of this parent element)
- *
- * @return {Object} Directive Definition Object for a rxNestedElement
- *
- * @example
- * <pre>
- * angular.module('myApp', [])
- * .directive('parentElement', function (rxNestedElement) {
- *   return rxNestedElement();
- * })
- * .directive('childElement', function (rxNestedElement) {
- *   return rxNestedElement({
- *      parent: 'parentElement'
- *   });
- * });
- * </pre>
- */
-.factory('rxNestedElement', function () {
-    return function (opts) {
-        opts = opts || {};
-
-        var defaults = {
-            restrict: 'E',
-            /*
-             * must be defined for a child element to verify
-             * correct hierarchy
-             */
-            controller: angular.noop
-        };
-
-        if (angular.isDefined(opts.parent)) {
-            opts.require = '^' + opts.parent;
-            /*
-             * bare minimum function definition needed for "require"
-             * validation logic
-             *
-             * NOTE: `angular.noop` and `_.noop` WILL NOT trigger validation
-             */
-            opts.link = function () {};
-        }
-
-        return _.defaults(opts, defaults);
-    };
-});
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc service
- * @name utilities.service:rxLocalStorage
- * @description
- * A simple wrapper for injecting the global variable `localStorage`
- * for storing values in the browser's local storage object. This service is similar to Angular's
- * `$window` and `$document` services.  The API works the same as the W3C's
- * specification provided at: https://html.spec.whatwg.org/multipage/webstorage.html.
- * This service also includes helper functions for getting and setting objects.
- *
- * @example
- * <pre>
- * rxLocalStorage.setItem('Batman', 'Robin'); // no return value
- * rxLocalStorage.key(0); // returns 'Batman'
- * rxLocalStorage.getItem('Batman'); // returns 'Robin'
- * rxLocalStorage.removeItem('Batman'); // no return value
- * rxLocalStorage.setObject('hero', {name:'Batman'}); // no return value
- * rxLocalStorage.getObject('hero'); // returns { name: 'Batman'}
- * rxLocalStorage.clear(); // no return value
- * </pre>
- */
-.service('rxLocalStorage', ["$window", function ($window) {
-    var localStorage = $window.localStorage;
-    if ($window.self !== $window.top && $window.top.localStorage) {
-        localStorage = $window.top.localStorage;
-    }
-
-    this.setItem = function (key, value) {
-        localStorage.setItem(key, value);
-    };
-
-    this.getItem = function (key) {
-        return localStorage.getItem(key);
-    };
-
-    this.key = function (key) {
-        return localStorage.key(key);
-    };
-
-    this.removeItem = function (key) {
-        localStorage.removeItem(key);
-    };
-
-    this.clear = function () {
-        localStorage.clear();
-    };
-
-    this.__defineGetter__('length', function () {
-        return localStorage.length;
-    });
-
-    this.setObject = function (key, val) {
-        var value = _.isObject(val) || _.isArray(val) ? JSON.stringify(val) : val;
-        this.setItem(key, value);
-    };
-
-    this.getObject = function (key) {
-        var item = localStorage.getItem(key);
-        try {
-            item = JSON.parse(item);
-        } catch (error) {
-            return item;
-        }
-
-        return item;
-    };
-}]);
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc service
- * @name utilities.service:rxDOMHelper
- * @description
- * A small set of functions to provide some functionality
- * that isn't present in [Angular's jQuery-lite](https://docs.angularjs.org/api/ng/function/angular.element),
- * and other DOM-related functions that are useful.
- *
- * **NOTE:** All methods take jQuery-lite wrapped elements as arguments.
- */
-.factory('rxDOMHelper', ["$document", "$window", function ($document, $window) {
-    var scrollTop = function () {
-        // Safari and Chrome both use body.scrollTop, but Firefox needs
-        // documentElement.scrollTop
-        var doc = $document[0];
-        var scrolltop = $window.pageYOffset || doc.body.scrollTop || doc.documentElement.scrollTop || 0;
-        return scrolltop;
-    };
-
-    var offset = function (elm) {
-        //http://cvmlrobotics.blogspot.co.at/2013/03/angularjs-get-element-offset-position.html
-        var rawDom = elm[0];
-        var _x = 0;
-        var _y = 0;
-        var doc = $document[0];
-        var body = doc.documentElement || doc.body;
-        var scrollX = $window.pageXOffset || body.scrollLeft;
-        var scrollY = scrollTop();
-        var rect = rawDom.getBoundingClientRect();
-        _x = rect.left + scrollX;
-        _y = rect.top + scrollY;
-        return { left: _x, top: _y };
-    };
-
-    var style = function (elem) {
-        if (elem instanceof angular.element) {
-            elem = elem[0];
-        }
-        return $window.getComputedStyle(elem);
-    };
-
-    var width = function (elem) {
-        return style(elem).width;
-    };
-
-    var height = function (elem) {
-        return style(elem).height;
-    };
-
-    var shouldFloat = function (elem, maxHeight) {
-        var elemOffset = offset(elem),
-            scrolltop = scrollTop();
-
-        return ((scrolltop > elemOffset.top) && (scrolltop < elemOffset.top + maxHeight));
-    };
-
-    // An implementation of wrapAll, based on
-    // http://stackoverflow.com/a/13169465
-    // Takes a raw DOM `newParent`, and moves all of `elms` (either
-    // a single element or an array of elements) into it. It then places
-    // `newParent` in the location that elms[0] was originally in
-    var wrapAll = function (newParent, elms) {
-        // Figure out if it's one element or an array
-        var isGroupParent = ['SELECT', 'FORM'].indexOf(elms.tagName) !== -1;
-        var el = (elms.length && !isGroupParent) ? elms[0] : elms;
-
-        // cache the current parent node and sibling
-        // of the first element
-        var parentNode = el.parentNode;
-        var sibling = el.nextSibling;
-
-        // wrap the first element. This automatically
-        // removes it from its parent
-        newParent.appendChild(el);
-
-        // If there are other elements, wrap them. Each time
-        // it will remove the element from its current parent,
-        // and also from the `elms` array
-        if (!isGroupParent) {
-            while (elms.length) {
-                newParent.appendChild(elms[0]);
-            }
-        }
-
-        // If there was a sibling to the first element,
-        // insert newParent right before it. Otherwise
-        // just add it to parentNode
-        if (sibling) {
-            parentNode.insertBefore(newParent, sibling);
-        } else {
-            parentNode.appendChild(newParent);
-        }
-    };
-
-    // bind `f` to the scroll event
-    var onscroll = function (f) {
-        angular.element($window).bind('scroll', f);
-    };
-
-    var find = function (elem, selector) {
-        return angular.element(elem[0].querySelector(selector));
-    };
-
-    return {
-        offset: offset,
-        scrollTop: scrollTop,
-        width: width,
-        height: height,
-        shouldFloat: shouldFloat,
-        onscroll: onscroll,
-        find: find,
-        wrapAll: wrapAll
-    };
-}]);
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc filter
- * @name utilities.filter:rxAge
- * @description
- * Several filters are available to parse dates.
- *
- * ## Two Digit Display
- * 1. You can just have it use the default abbreviated method and it truncates it
- *  to the two largest units.
- *
- *  <pre>
- *    <div ng-controller="rxAgeCtrl">
- *      <ul>
- *        <li>{{ageHours}} &rarr; {{ageHours | rxAge}}</li>
- *      </ul>
- *    </div>
- *  </pre>
- *  `Tue Sep 22 2015 00:44:00 GMT-0500 (CDT) → 10h 30m`
- *
- * ## Full Word Representation
- * 2. You can also pass in a second value of `true` and have it expand the units
- *  from the first letter to their full word representation.
- *
- *  <pre>
- *    <div ng-controller="rxAgeCtrl">
- *      <ul>
- *        <li>{{ageHours}} &rarr; {{ageHours | rxAge:true}}</li>
- *      </ul>
- *    </div>
- *  </pre>
- *  `Tue Sep 22 2015 00:35:30 GMT-0500 (CDT) → 10 hours, 33 minutes`
- *
- * ## Mulitple Digits
- * 3. Or you can pass in a number from `1` to `3` as the second value to allow for
- *  different amounts of units.
- *
- *  <pre>
- *    <div ng-controller="rxAgeCtrl">
- *      <ul>
- *        <li>{{ageYears}} &rarr; {{ageYears | rxAge:3}}</li>
- *      </ul>
- *    </div>
- *  </pre>
- *  `Sun Sep 07 2014 08:46:05 GMT-0500 (CDT) → 380d 2h 27m`
- *
- * ## Multiple Argument Usage
- * 4. **OR** you can pass in a number as the second argument and `true` as the
- *    third argument to combine these two effects.
- *
- *  <pre>
- *    <div ng-controller="rxAgeCtrl">
- *      <ul>
- *        <li>{{ageMonths}} &rarr; {{ageMonths | rxAge:3:true}}</li>
- *      </ul>
- *    </div>
- *  </pre>
- *  `Thu Aug 13 2015 06:22:05 GMT-0500 (CDT) → 40 days, 4 hours, 49 minutes`
- *
- *
- * **NOTE:** This component requires [moment.js](http://momentjs.com/) to parse, manipulate, and
- * display dates which is provided by Encore Framework.
- */
-.filter('rxAge', function () {
-    return function (dateString, maxUnits, verbose) {
-        if (!dateString) {
-            return 'Unavailable';
-        } else if (dateString === 'z') {
-            return '--';
-        }
-
-        var now = moment();
-        var date = moment(new Date(dateString));
-        var diff = now.diff(date);
-        var duration = moment.duration(diff);
-        var days = parseInt(duration.asDays(), 10);
-        var hours = parseInt(duration.asHours(), 10);
-        var mins = parseInt(duration.asMinutes(), 10);
-        var age = [];
-
-        if (_.isBoolean(maxUnits)) {
-            // if maxUnits is a boolean, then we assume it's meant to be the verbose setting
-            verbose = maxUnits;
-        } else if (!_.isBoolean(verbose)) {
-            // otherwise, if verbose isn't set, default to false
-            verbose =  false;
-        }
-
-        // This initialization has to happen AFTER verbose init so that we can
-        // use the original passed in value.
-        maxUnits = (_.isNumber(maxUnits)) ? maxUnits : 2;
-
-        var dateUnits = [days, hours - (24 * days), mins - (60 * hours)];
-        var suffixes = ['d', 'h', 'm'];
-
-        if (verbose) {
-            suffixes = [' day', ' hour', ' minute'];
-
-            _.forEach(suffixes, function (suffix, index) {
-                suffixes[index] += ((dateUnits[index] !== 1) ? 's' : '');
-            });
-        }
-
-        if (days > 0) {
-            age.push({ value: days, suffix: suffixes[0] });
-        }
-
-        if (hours > 0) {
-            age.push({ value: hours - (24 * days), suffix: suffixes[1] });
-        }
-
-        age.push({ value: mins - (60 * hours), suffix: suffixes[2] });
-
-        return _.map(age.slice(0, maxUnits), function (dateUnit, index, listOfAges) {
-            if (index === listOfAges.length - 1) {
-                return Math.round(dateUnit.value) + dateUnit.suffix;
-            } else {
-                return Math.floor(dateUnit.value) + dateUnit.suffix;
-            }
-        }).join((verbose) ? ', ' : ' ');
-    };
-});
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc parameters
- * @name utilities.constant:UtcOffsets
- *
- * @description
- * List of known UTC Offset Values
- * See https://en.wikipedia.org/wiki/List_of_UTC_time_offsets
- *
- * Utility service used by {@link elements.directive:rxTimePicker rxTimePicker}.
- */
-.constant('UtcOffsets', [
-    '-12:00',
-    '-11:00',
-    '-10:00',
-    '-09:30',
-    '-09:00',
-    '-08:00',
-    '-07:00',
-    '-06:00',
-    '-05:00',
-    '-04:30',
-    '-04:00',
-    '-03:30',
-    '-03:00',
-    '-02:00',
-    '-01:00',
-    '+00:00',
-    '+01:00',
-    '+02:00',
-    '+03:00',
-    '+03:30',
-    '+04:00',
-    '+04:30',
-    '+05:00',
-    '+05:30',
-    '+05:45',
-    '+06:00',
-    '+06:30',
-    '+07:00',
-    '+08:00',
-    '+08:30',
-    '+08:45',
-    '+09:00',
-    '+09:30',
-    '+10:00',
-    '+10:30',
-    '+11:00',
-    '+12:00',
-    '+12:45',
-    '+13:00',
-    '+14:00',
-]);
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc service
- * @name utilities.service:UnauthorizedInterceptor
- * @description
- * Simple injector which will intercept HTTP responses. If a HTTP 401 response error code is returned,
- * the ui redirects to `/login`.
- *
- * @requires $q
- * @requires @window
- * @requires utilities.service:Session
- *
- * @example
- * <pre>
- * angular.module('encoreApp', ['encore.ui'])
- *     .config(function ($httpProvider) {
- *         $httpProvider.interceptors.push('UnauthorizedInterceptor');
- *     });
- * </pre>
- */
-.factory('UnauthorizedInterceptor', ["$q", "$window", "Session", function ($q, $window, Session) {
-    var svc = {
-        redirectPath: function () {
-            // This brings in the entire relative URI (including the path
-            // specified in a <base /> tag), along with query params as a
-            // string.
-            // e.g https://www.google.com/search?q=woody+wood+pecker
-            // window.location.pathname = /search?q=woody+wood+pecker
-            return $window.location.pathname;
-        },
-        redirect: function (loginPath) {
-            loginPath = loginPath ? loginPath : '/login?redirect=';
-            $window.location = loginPath + encodeURIComponent(svc.redirectPath());
-        },
-        responseError: function (response) {
-            if (response.status === 401) {
-                Session.logout(); // Logs out user by removing token
-                svc.redirect();
-            }
-
-            return $q.reject(response);
-        }
-    };
-
-    return svc;
-}]);
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc service
- * @name utilities.service:TokenInterceptor
- * @description
- * Simple $http injector which will intercept http request and inject the
- * Rackspace Identity's token into every http request.
- *
- * @requires rxSession.service:Session
- *
- * @example
- * <pre>
- * angular.module('encoreApp', ['encore.ui'])
- *     .config(function ($httpProvider) {
- *         $httpProvider.interceptors.push('TokenInterceptor');
- *     });
- * </pre>
- */
-.provider('TokenInterceptor', function () {
-    var exclusionList = this.exclusionList = [ 'rackcdn.com' ];
-
-    this.$get = ["Session", "$document", function (Session, $document) {
-        var url = $document[0].createElement('a');
-        return {
-            request: function (config) {
-                // Don't add the X-Auth-Token if the request URL matches
-                // something in exclusionList
-                // We're specifically looking at hostnames, so we have to
-                // do the `createElement('a')` trick to turn the config.url
-                // into something with a `.hostname`
-                url.href = config.url;
-                var exclude = _.some(exclusionList, function (item) {
-                    if (_.contains(url.hostname, item)) {
-                        return true;
-                    }
-                });
-
-                if (!exclude) {
-                    config.headers['X-Auth-Token'] = Session.getTokenId();
-                }
-
-                return config;
-            }
-        };
-    }];
-});
-
-angular.module('encore.ui.utilities')
-/**
- * @ngdoc service
- * @name utilities.service:Session
- * @description
- *
- * Service for managing user session in encore-ui.
- *
- * @requires utilities.service:rxLocalStorage
- *
- * @example
- * <pre>
- * Session.getToken(); // Returns the stored token
- * Session.storeToken(token); // Stores token
- * Session.logout(); // Logs user off
- * Session.isCurrent(); // Returns true/false if the token has expired.
- * Session.isAuthenticated(); // Returns true/false if the user token is valid.
- * </pre>
- */
-.factory('Session', ["rxLocalStorage", function (rxLocalStorage) {
-    var TOKEN_ID = 'encoreSessionToken';
-    var session = {};
-
-    /**
-    * Dot walks the token without throwing an error.
-    * If key exists, returns value otherwise returns undefined.
-    */
-    session.getByKey = function (key) {
-        var tokenValue,
-            token = session.getToken(),
-            keys = key ? key.split('.') : undefined;
-
-        if (_.isEmpty(token) || !keys) {
-            return;
-        }
-
-        tokenValue = _.reduce(keys, function (val, key) {
-            return val ? val[key] : undefined;
-        }, token);
-
-        return tokenValue;
-    };
-
-    session.getToken = function () {
-        return rxLocalStorage.getObject(TOKEN_ID);
-    };
-
-    session.getTokenId = function () {
-        return session.getByKey('access.token.id');
-    };
-
-    session.getUserId = function () {
-        return session.getByKey('access.user.id');
-    };
-
-    session.getUserName = function () {
-        return session.getByKey('access.user.name');
-    };
-
-    session.storeToken = function (token) {
-        rxLocalStorage.setObject(TOKEN_ID, token);
-    };
-
-    session.logout = function () {
-        rxLocalStorage.removeItem(TOKEN_ID);
-    };
-
-    session.isCurrent = function () {
-        var expireDate = session.getByKey('access.token.expires');
-
-        if (expireDate) {
-            return new Date(expireDate) > _.now();
-        }
-
-        return false;
-    };
-
-    session.isAuthenticated = function () {
-        var token = session.getToken();
-        return _.isEmpty(token) ? false : session.isCurrent();
-    };
-
-    return session;
 }]);
 
 /**
@@ -2802,6 +2802,21 @@ angular.module('encore.ui.elements')
 });
 
 angular.module('encore.ui.elements')
+.config(["$provide", function ($provide) {
+  $provide.decorator('rxActionMenuDirective', ["$delegate", function ($delegate) {
+    // https://github.com/angular/angular.js/issues/10149
+    _.each(['type', 'text'], function (key) {
+      $delegate[0].$$isolateBindings[key] = {
+        attrName: key,
+        mode: '@',
+        optional: true
+      };
+    });
+    return $delegate;
+  }]);
+}]);
+
+angular.module('encore.ui.elements')
 /**
  * @ngdoc directive
  * @name elements.directive:rxActionMenu
@@ -2868,19 +2883,323 @@ angular.module('encore.ui.elements')
     };
 }]);
 
-angular.module('encore.ui.elements')
-.config(["$provide", function ($provide) {
-  $provide.decorator('rxActionMenuDirective', ["$delegate", function ($delegate) {
-    // https://github.com/angular/angular.js/issues/10149
-    _.each(['type', 'text'], function (key) {
-      $delegate[0].$$isolateBindings[key] = {
-        attrName: key,
-        mode: '@',
-        optional: true
-      };
-    });
-    return $delegate;
-  }]);
+/**
+ * @ngdoc overview
+ * @name rxStatusColumn
+ * @description
+ * # rxStatusColumn Component
+ *
+ * This component provides directives and styles for putting status columns
+ * into tables.
+ *
+ * ## Directives
+ * * {@link rxStatusColumn.directive:rxStatusColumn rxStatusColumn}
+ * * {@link rxStatusColumn.directive:rxStatusHeader rxStatusHeader}
+ */
+angular.module('encore.ui.rxStatusColumn', [
+    'encore.ui.utilities'
+]);
+
+angular.module('encore.ui.rxStatusColumn')
+/**
+ * @ngdoc directive
+ * @name rxStatusColumn.directive:rxStatusHeader
+ * @description
+ *
+ * Place this attribute directive on the `<th>` for the status columns. It
+ * ensures correct styling.
+ *
+ * For the `<th>` component representing the status column, add the
+ * `rx-status-header` attribute, i.e.
+ *
+ * <pre>
+ * <th rx-status-header></th>
+ * </pre>
+ * Note that status columns are sortable with
+ * {@link /encore-ui/#/components/rxSortableColumn rxSortableColumn}, just like any
+ * other column. The demo below shows an example of this.
+ *
+ * One few things to note about the
+ * {@link /encore-ui/#/components/rxStatusColumn demo}: The `<th>` is defined as:
+ *
+ * <pre>
+ * <th rx-status-header>
+ *     <rx-sortable-column
+ *         sort-method="sortcol(property)"
+ *         sort-property="status"
+ *         predicate="sort.predicate"
+ *         reverse="sort.reverse">
+ *     </rx-sortable-column>
+ * </th>
+ * </pre>
+ *
+ * Note that `sort-property="status"` is referring to the `server.status`
+ * property on each row. Thus the sorting is done in this example by the status
+ * text coming from the API.
+ */
+.directive('rxStatusHeader', function () {
+    return {
+        link: function (scope, element) {
+            element.addClass('rx-status-header');
+        }
+    };
+});
+
+angular.module('encore.ui.rxStatusColumn')
+/**
+ * @ngdoc directive
+ * @name rxStatusColumn.directive:rxStatusColumn
+ * @restrict A
+ * @scope
+ * @description
+ *
+ * A directive for drawing colored status columns in a table. This
+ * takes the place of the <td></td> for the column it's in.
+ *
+ * For the corresponding `<td>`, you will need to add the `rx-status-column`
+ * attribute, and set the `status` attribute appropriately. You can optionally
+ * set `api` and `tooltip-content` attributes. `tooltip-content` sets the
+ * tooltip that will be used. If not set, it will default to the value you
+ * passed in for `status`. The `api` attribute will be explained below.
+ *
+ * We currently support six statuses, with corresponding CSS styles. Namely,
+ * `"ACTIVE"`, `"DISABLED"`, `"WARNING"`, `"ERROR"`, `"INFO"` and `"PENDING"`.
+ * If your code happens to already use those statuses, then you can simply pass
+ * them to the `status` attribute as appropriate. However, it's likely that
+ * internally you will be receiving a number of different statuses from your
+ * APIs, and will need to map them to these six statuses.
+ *
+ * The example in the {@link /encore-ui/#/components/rxStatusColumn demo} shows a typical
+ * use of this directive, such as:
+ *
+ * <pre>
+ * <tbody>
+ *     <tr ng-repeat="server in servers">
+ *         <!-- Both `api` and `tooltip-content` are optional -->
+ *         <td rx-status-column
+ *             status="{{ server.status }}"
+ *             api="{{ server.api }}"
+ *             tooltip-content="{{ server.status }}"></td>
+ *         <td>{{ server.title }}</td>
+ *         <td>{{ server.value }}</td>
+ *    </tr>
+ * </tbody>
+ * </pre>
+ *
+ * # A note about color usage for rxStatusColumn
+ *
+ * Encore uses the color red for destructive and "delete" actions, and the
+ * color green for additive or "create" actions, and at first it may seem that
+ * the styles of rxStatusColumn do not follow that same logic. However, the
+ * distinction here is that when an action or status on an item is
+ * "in progress" or "pending" (i.e. the user cannot take any additional action
+ * on that item until a transition completes), it is given the yellow animated
+ * `PENDING` treatment. This is true even for "create"/"add" actions or
+ * "delete" actions. A general rule of thumb to follow is that if a status
+ * ends in -`ING`, it should get the animated yellow stripes of `PENDING`.
+ *
+ * @param {String} status The status to draw
+ * @param {String} [api] Optionally specify which API mapping to use for the status
+ * @param {String} [tooltip] The string to use for the tooltip. If omitted,
+ *                           it will default to using the passed in status
+ */
+.directive('rxStatusColumn', ["rxStatusMappings", "rxStatusColumnIcons", function (rxStatusMappings, rxStatusColumnIcons) {
+    return {
+        templateUrl: 'templates/rxStatusColumn.html',
+        restrict: 'A',
+        scope: {
+            status: '@',
+            api: '@',
+            tooltipContent: '@'
+        },
+        link: function (scope, element) {
+
+            var lastStatusClass = '';
+
+            var updateTooltip = function () {
+                scope.tooltipText = scope.tooltipContent || scope.status || '';
+            };
+
+            var setStatus = function (status) {
+                scope.mappedStatus = rxStatusMappings.getInternalMapping(status, scope.api);
+                updateTooltip();
+
+                // We use `fa-exclamation-circle` when no icon should be visible. Our LESS file
+                // makes it transparent
+                scope.statusIcon = rxStatusColumnIcons[scope.mappedStatus] || 'fa-exclamation-circle';
+                element.addClass('status');
+                element.removeClass(lastStatusClass);
+                lastStatusClass = 'status-' + scope.mappedStatus;
+                element.addClass(lastStatusClass);
+                element.addClass('rx-status-column');
+            };
+
+            scope.$watch('status', function (newStatus) {
+                setStatus(newStatus);
+            });
+
+            scope.$watch('tooltipContent', function () {
+                updateTooltip();
+            });
+        }
+    };
+}]);
+
+/**
+ * @ngdoc overview
+ * @name rxSortableColumn
+ * @description
+ * # rxSortableColumn Component
+ *
+ * The rxSortableColumn component provides functionality to sort a table on a
+ * single property value.
+ *
+ * ## Directives
+ * * {@link rxSortableColumn.directive:rxSortableColumn rxSortableColumn}
+ */
+angular.module('encore.ui.rxSortableColumn', []);
+
+angular.module('encore.ui.rxSortableColumn')
+/**
+ * @ngdoc directive
+ * @name rxSortableColumn.directive:rxSortableColumn
+ * @restrict E
+ * @description
+ * Renders a clickable link in a table heading which will sort the table by
+ * the referenced property in ascending or descending order.
+ *
+ * @param {String} displayText - The text to be displayed in the link
+ * @param {Function} sortMethod - The sort function to be called when the link is
+ * clicked
+ * @param {String} sortProperty - The property on the array to sort by when the
+ * link is clicked.
+ * @param {Object} predicate - The current property the collection is sorted by.
+ * @param {Boolean} reverse - Indicates whether the collection should sort the
+ * array in reverse order.
+ */
+.directive('rxSortableColumn', function () {
+    return {
+        restrict: 'E',
+        templateUrl: 'templates/rxSortableColumn.html',
+        transclude: true,
+        scope: {
+            sortMethod: '&',
+            sortProperty: '@',
+            predicate: '=',
+            reverse: '='
+        }
+    };
+});
+
+/**
+ * @ngdoc overview
+ * @name rxRadio
+ * @description
+ * # rxRadio Component
+ *
+ * The rxRadio component wraps a native radio element in markup required for styling purposes.
+ *
+ * ## Directives
+ * * {@link rxRadio.directive:rxRadio rxRadio}
+ */
+angular.module('encore.ui.rxRadio', []);
+
+angular.module('encore.ui.rxRadio')
+/**
+ * @name rxRadio.directive:rxRadio
+ * @ngdoc directive
+ * @restrict A
+ * @scope
+ * @description
+ * rxRadio is an attribute directive that wraps a native radio element in markup required for styling purposes.
+ * To use the directive, you can replace `type="radio"` with `rx-radio`. The directive is smart enough to set
+ * the correct input type.
+ *
+ * # Styling
+ * Directive results in an inline-block element.
+ * You can style the output against decendents of the **`.rxRadio`** CSS class.
+ *
+ * # Show/Hide
+ * If you wish to show/hide your `rxRadio` element (and its label), we recommend placing the element (and its label)
+ * inside of a `<div>` or `<span>` wrapper, and performing the show/hide logic on the wrapper.
+ * <pre>
+ * <span ng-show="isShown">
+ *   <input rx-radio id="radDemo" ng-model="radDemo" />
+ *   <label for="radDemo">Label for Demo Radio</label>
+ * </span>
+ * </pre>
+ *
+ * It is highly recommended that you use `ng-show` and `ng-hide` for display logic.
+ * Because of the way that `ng-if` and `ng-switch` directives behave with scope, they may
+ * introduce unnecessary complexity in your code.
+ *
+ * @example
+ * <pre>
+ * <input rx-radio id="radDemo" ng-model="radDemo" />
+ * <label for="radDemo">Label for Demo Radio</label>
+ * </pre>
+ *
+ * @param {Boolean=} [ng-disabled=false] Determines if control is disabled.
+ */
+.directive('rxRadio', function () {
+    return {
+        restrict: 'A',
+        scope: {
+            ngDisabled: '=?'
+        },
+        compile: function (tElement, tAttrs) {
+            // automatically set input type
+            tElement.attr('type', 'radio');
+            tAttrs.type = 'radio';
+
+            return function (scope, element, attrs) {
+                var disabledClass = 'rx-disabled';
+                var wrapper = '<div class="rxRadio"></div>';
+                var fakeRadio = '<div class="fake-radio">' +
+                        '<div class="tick"></div>' +
+                    '</div>';
+
+                element.wrap(wrapper);
+                element.after(fakeRadio);
+                // must be defined AFTER the element is wrapped
+                var parent = element.parent();
+
+                // apply/remove disabled attribute so we can
+                // apply a CSS selector to style sibling elements
+                if (attrs.disabled) {
+                    parent.addClass(disabledClass);
+                }
+                if (_.has(attrs, 'ngDisabled')) {
+                    scope.$watch('ngDisabled', function (newVal) {
+                        if (newVal === true) {
+                            parent.addClass(disabledClass);
+                        } else {
+                            parent.removeClass(disabledClass);
+                        }
+                    });
+                }
+
+                var removeParent = function () {
+                    parent.remove();
+                };
+
+                // remove stylistic markup when element is destroyed
+                element.on('$destroy', function () {
+                    scope.$evalAsync(removeParent);
+                });
+            };
+        }//compile
+    };
+});
+
+angular.module('encore.ui.rxPopover', ['encore.ui.elements'])
+
+angular.module('encore.ui.rxPopover')
+.directive('rxPopover', ["rxActionMenuDirective", function (rxActionMenuDirective) {
+  var ddo = _.cloneDeep(rxActionMenuDirective[0]);
+  return _.assign(ddo, {
+    templateUrl: 'templates/rxPopover.html'
+  });
 }]);
 
 /**
@@ -3566,325 +3885,6 @@ angular.module('encore.ui.rxPaginate')
             });
         }
     };
-}]);
-
-/**
- * @ngdoc overview
- * @name rxStatusColumn
- * @description
- * # rxStatusColumn Component
- *
- * This component provides directives and styles for putting status columns
- * into tables.
- *
- * ## Directives
- * * {@link rxStatusColumn.directive:rxStatusColumn rxStatusColumn}
- * * {@link rxStatusColumn.directive:rxStatusHeader rxStatusHeader}
- */
-angular.module('encore.ui.rxStatusColumn', [
-    'encore.ui.utilities'
-]);
-
-angular.module('encore.ui.rxStatusColumn')
-/**
- * @ngdoc directive
- * @name rxStatusColumn.directive:rxStatusHeader
- * @description
- *
- * Place this attribute directive on the `<th>` for the status columns. It
- * ensures correct styling.
- *
- * For the `<th>` component representing the status column, add the
- * `rx-status-header` attribute, i.e.
- *
- * <pre>
- * <th rx-status-header></th>
- * </pre>
- * Note that status columns are sortable with
- * {@link /encore-ui/#/components/rxSortableColumn rxSortableColumn}, just like any
- * other column. The demo below shows an example of this.
- *
- * One few things to note about the
- * {@link /encore-ui/#/components/rxStatusColumn demo}: The `<th>` is defined as:
- *
- * <pre>
- * <th rx-status-header>
- *     <rx-sortable-column
- *         sort-method="sortcol(property)"
- *         sort-property="status"
- *         predicate="sort.predicate"
- *         reverse="sort.reverse">
- *     </rx-sortable-column>
- * </th>
- * </pre>
- *
- * Note that `sort-property="status"` is referring to the `server.status`
- * property on each row. Thus the sorting is done in this example by the status
- * text coming from the API.
- */
-.directive('rxStatusHeader', function () {
-    return {
-        link: function (scope, element) {
-            element.addClass('rx-status-header');
-        }
-    };
-});
-
-angular.module('encore.ui.rxStatusColumn')
-/**
- * @ngdoc directive
- * @name rxStatusColumn.directive:rxStatusColumn
- * @restrict A
- * @scope
- * @description
- *
- * A directive for drawing colored status columns in a table. This
- * takes the place of the <td></td> for the column it's in.
- *
- * For the corresponding `<td>`, you will need to add the `rx-status-column`
- * attribute, and set the `status` attribute appropriately. You can optionally
- * set `api` and `tooltip-content` attributes. `tooltip-content` sets the
- * tooltip that will be used. If not set, it will default to the value you
- * passed in for `status`. The `api` attribute will be explained below.
- *
- * We currently support six statuses, with corresponding CSS styles. Namely,
- * `"ACTIVE"`, `"DISABLED"`, `"WARNING"`, `"ERROR"`, `"INFO"` and `"PENDING"`.
- * If your code happens to already use those statuses, then you can simply pass
- * them to the `status` attribute as appropriate. However, it's likely that
- * internally you will be receiving a number of different statuses from your
- * APIs, and will need to map them to these six statuses.
- *
- * The example in the {@link /encore-ui/#/components/rxStatusColumn demo} shows a typical
- * use of this directive, such as:
- *
- * <pre>
- * <tbody>
- *     <tr ng-repeat="server in servers">
- *         <!-- Both `api` and `tooltip-content` are optional -->
- *         <td rx-status-column
- *             status="{{ server.status }}"
- *             api="{{ server.api }}"
- *             tooltip-content="{{ server.status }}"></td>
- *         <td>{{ server.title }}</td>
- *         <td>{{ server.value }}</td>
- *    </tr>
- * </tbody>
- * </pre>
- *
- * # A note about color usage for rxStatusColumn
- *
- * Encore uses the color red for destructive and "delete" actions, and the
- * color green for additive or "create" actions, and at first it may seem that
- * the styles of rxStatusColumn do not follow that same logic. However, the
- * distinction here is that when an action or status on an item is
- * "in progress" or "pending" (i.e. the user cannot take any additional action
- * on that item until a transition completes), it is given the yellow animated
- * `PENDING` treatment. This is true even for "create"/"add" actions or
- * "delete" actions. A general rule of thumb to follow is that if a status
- * ends in -`ING`, it should get the animated yellow stripes of `PENDING`.
- *
- * @param {String} status The status to draw
- * @param {String} [api] Optionally specify which API mapping to use for the status
- * @param {String} [tooltip] The string to use for the tooltip. If omitted,
- *                           it will default to using the passed in status
- */
-.directive('rxStatusColumn', ["rxStatusMappings", "rxStatusColumnIcons", function (rxStatusMappings, rxStatusColumnIcons) {
-    return {
-        templateUrl: 'templates/rxStatusColumn.html',
-        restrict: 'A',
-        scope: {
-            status: '@',
-            api: '@',
-            tooltipContent: '@'
-        },
-        link: function (scope, element) {
-
-            var lastStatusClass = '';
-
-            var updateTooltip = function () {
-                scope.tooltipText = scope.tooltipContent || scope.status || '';
-            };
-
-            var setStatus = function (status) {
-                scope.mappedStatus = rxStatusMappings.getInternalMapping(status, scope.api);
-                updateTooltip();
-
-                // We use `fa-exclamation-circle` when no icon should be visible. Our LESS file
-                // makes it transparent
-                scope.statusIcon = rxStatusColumnIcons[scope.mappedStatus] || 'fa-exclamation-circle';
-                element.addClass('status');
-                element.removeClass(lastStatusClass);
-                lastStatusClass = 'status-' + scope.mappedStatus;
-                element.addClass(lastStatusClass);
-                element.addClass('rx-status-column');
-            };
-
-            scope.$watch('status', function (newStatus) {
-                setStatus(newStatus);
-            });
-
-            scope.$watch('tooltipContent', function () {
-                updateTooltip();
-            });
-        }
-    };
-}]);
-
-/**
- * @ngdoc overview
- * @name rxSortableColumn
- * @description
- * # rxSortableColumn Component
- *
- * The rxSortableColumn component provides functionality to sort a table on a
- * single property value.
- *
- * ## Directives
- * * {@link rxSortableColumn.directive:rxSortableColumn rxSortableColumn}
- */
-angular.module('encore.ui.rxSortableColumn', []);
-
-angular.module('encore.ui.rxSortableColumn')
-/**
- * @ngdoc directive
- * @name rxSortableColumn.directive:rxSortableColumn
- * @restrict E
- * @description
- * Renders a clickable link in a table heading which will sort the table by
- * the referenced property in ascending or descending order.
- *
- * @param {String} displayText - The text to be displayed in the link
- * @param {Function} sortMethod - The sort function to be called when the link is
- * clicked
- * @param {String} sortProperty - The property on the array to sort by when the
- * link is clicked.
- * @param {Object} predicate - The current property the collection is sorted by.
- * @param {Boolean} reverse - Indicates whether the collection should sort the
- * array in reverse order.
- */
-.directive('rxSortableColumn', function () {
-    return {
-        restrict: 'E',
-        templateUrl: 'templates/rxSortableColumn.html',
-        transclude: true,
-        scope: {
-            sortMethod: '&',
-            sortProperty: '@',
-            predicate: '=',
-            reverse: '='
-        }
-    };
-});
-
-/**
- * @ngdoc overview
- * @name rxRadio
- * @description
- * # rxRadio Component
- *
- * The rxRadio component wraps a native radio element in markup required for styling purposes.
- *
- * ## Directives
- * * {@link rxRadio.directive:rxRadio rxRadio}
- */
-angular.module('encore.ui.rxRadio', []);
-
-angular.module('encore.ui.rxRadio')
-/**
- * @name rxRadio.directive:rxRadio
- * @ngdoc directive
- * @restrict A
- * @scope
- * @description
- * rxRadio is an attribute directive that wraps a native radio element in markup required for styling purposes.
- * To use the directive, you can replace `type="radio"` with `rx-radio`. The directive is smart enough to set
- * the correct input type.
- *
- * # Styling
- * Directive results in an inline-block element.
- * You can style the output against decendents of the **`.rxRadio`** CSS class.
- *
- * # Show/Hide
- * If you wish to show/hide your `rxRadio` element (and its label), we recommend placing the element (and its label)
- * inside of a `<div>` or `<span>` wrapper, and performing the show/hide logic on the wrapper.
- * <pre>
- * <span ng-show="isShown">
- *   <input rx-radio id="radDemo" ng-model="radDemo" />
- *   <label for="radDemo">Label for Demo Radio</label>
- * </span>
- * </pre>
- *
- * It is highly recommended that you use `ng-show` and `ng-hide` for display logic.
- * Because of the way that `ng-if` and `ng-switch` directives behave with scope, they may
- * introduce unnecessary complexity in your code.
- *
- * @example
- * <pre>
- * <input rx-radio id="radDemo" ng-model="radDemo" />
- * <label for="radDemo">Label for Demo Radio</label>
- * </pre>
- *
- * @param {Boolean=} [ng-disabled=false] Determines if control is disabled.
- */
-.directive('rxRadio', function () {
-    return {
-        restrict: 'A',
-        scope: {
-            ngDisabled: '=?'
-        },
-        compile: function (tElement, tAttrs) {
-            // automatically set input type
-            tElement.attr('type', 'radio');
-            tAttrs.type = 'radio';
-
-            return function (scope, element, attrs) {
-                var disabledClass = 'rx-disabled';
-                var wrapper = '<div class="rxRadio"></div>';
-                var fakeRadio = '<div class="fake-radio">' +
-                        '<div class="tick"></div>' +
-                    '</div>';
-
-                element.wrap(wrapper);
-                element.after(fakeRadio);
-                // must be defined AFTER the element is wrapped
-                var parent = element.parent();
-
-                // apply/remove disabled attribute so we can
-                // apply a CSS selector to style sibling elements
-                if (attrs.disabled) {
-                    parent.addClass(disabledClass);
-                }
-                if (_.has(attrs, 'ngDisabled')) {
-                    scope.$watch('ngDisabled', function (newVal) {
-                        if (newVal === true) {
-                            parent.addClass(disabledClass);
-                        } else {
-                            parent.removeClass(disabledClass);
-                        }
-                    });
-                }
-
-                var removeParent = function () {
-                    parent.remove();
-                };
-
-                // remove stylistic markup when element is destroyed
-                element.on('$destroy', function () {
-                    scope.$evalAsync(removeParent);
-                });
-            };
-        }//compile
-    };
-});
-
-angular.module('encore.ui.rxPopover', ['encore.ui.elements'])
-
-angular.module('encore.ui.rxPopover')
-.directive('rxPopover', ["rxActionMenuDirective", function (rxActionMenuDirective) {
-  var ddo = _.cloneDeep(rxActionMenuDirective[0]);
-  return _.assign(ddo, {
-    templateUrl: 'templates/rxPopover.html'
-  });
 }]);
 
 angular.module('encore.ui.rxForm', ['encore.ui.utilities']);
@@ -5829,6 +5829,11 @@ angular.module('encore.bridge').run(['$templateCache', function($templateCache) 
 }]);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
+  $templateCache.put('templates/rxPaginate.html',
+    '<div class="rx-paginate"><div class="pagination" layout="row" layout-wrap layout-align="justify top"><div flex="50" flex-order="2" flex-gt-md="20" flex-order-gt-md="1" flex-gt-lg="35" layout="row"><a class="back-to-top" tabindex="0" ng-click="scrollToTop()">Back to top</a><div hide show-gt-lg>Showing {{ pageTracking | PaginatedItemsSummary}} items</div></div><div flex="100" flex-order="1" flex-gt-md="40" flex-order-gt-md="2" flex-gt-lg="35"><div class="page-links" layout="row" layout-align="center"><div ng-class="{disabled: pageTracking.isFirstPage()}" class="pagination-first"><a hide show-gt-lg ng-click="pageTracking.goToFirstPage()" ng-hide="pageTracking.isFirstPage()">First</a></div><div ng-class="{disabled: pageTracking.isFirstPage()}" class="pagination-prev"><a ng-click="pageTracking.goToPrevPage()" ng-hide="pageTracking.isFirstPage()">« Prev</a></div><div ng-repeat="n in pageTracking | Page" ng-class="{active: pageTracking.isPage(n), \'page-number-last\': pageTracking.isPageNTheLastPage(n)}" class="pagination-page"><a ng-click="pageTracking.goToPage(n)">{{n + 1}}</a></div><div ng-class="{disabled: pageTracking.isLastPage() || pageTracking.isEmpty()}" class="pagination-next"><a ng-click="pageTracking.goToNextPage()" ng-hide="pageTracking.isLastPage() || pageTracking.isEmpty()">Next »</a></div><div ng-class="{disabled: pageTracking.isLastPage()}" class="pagination-last"><a hide show-gt-lg ng-click="pageTracking.goToLastPage()" ng-hide="pageTracking.isLastPage()">Last</a></div></div></div><div flex="50" flex-order="3" flex-gt-md="40" flex-order-gt-md="3" flex-gt-lg="30"><div class="pagination-per-page" layout="row" layout-align="right"><div>Show</div><div ng-repeat="i in pageTracking.itemSizeList"><button ng-disabled="pageTracking.isItemsPerPage(i)" ng-click="pageTracking.setItemsPerPage(i)">{{ i }}</button></div></div></div></div></div>');
+}]);
+
+angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxPopover.html',
     '<div><button ng-if="!text" class="rs-cog" ng-click="toggle()"></button><div class="rs-popover" ng-if="displayed"><div class="rs-popover-arrow rs-popover-arrow-top-left"></div><div class="rs-popover-content" ng-transclude></div></div></div>');
 }]);
@@ -5841,11 +5846,6 @@ angular.module('encore.bridge').run(['$templateCache', function($templateCache) 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxStatusColumn.html',
     '<span></span>');
-}]);
-
-angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
-  $templateCache.put('templates/rxPaginate.html',
-    '<div class="rx-paginate"><div class="pagination" layout="row" layout-wrap layout-align="justify top"><div flex="50" flex-order="2" flex-gt-md="20" flex-order-gt-md="1" flex-gt-lg="35" layout="row"><a class="back-to-top" tabindex="0" ng-click="scrollToTop()">Back to top</a><div hide show-gt-lg>Showing {{ pageTracking | PaginatedItemsSummary}} items</div></div><div flex="100" flex-order="1" flex-gt-md="40" flex-order-gt-md="2" flex-gt-lg="35"><div class="page-links" layout="row" layout-align="center"><div ng-class="{disabled: pageTracking.isFirstPage()}" class="pagination-first"><a hide show-gt-lg ng-click="pageTracking.goToFirstPage()" ng-hide="pageTracking.isFirstPage()">First</a></div><div ng-class="{disabled: pageTracking.isFirstPage()}" class="pagination-prev"><a ng-click="pageTracking.goToPrevPage()" ng-hide="pageTracking.isFirstPage()">« Prev</a></div><div ng-repeat="n in pageTracking | Page" ng-class="{active: pageTracking.isPage(n), \'page-number-last\': pageTracking.isPageNTheLastPage(n)}" class="pagination-page"><a ng-click="pageTracking.goToPage(n)">{{n + 1}}</a></div><div ng-class="{disabled: pageTracking.isLastPage() || pageTracking.isEmpty()}" class="pagination-next"><a ng-click="pageTracking.goToNextPage()" ng-hide="pageTracking.isLastPage() || pageTracking.isEmpty()">Next »</a></div><div ng-class="{disabled: pageTracking.isLastPage()}" class="pagination-last"><a hide show-gt-lg ng-click="pageTracking.goToLastPage()" ng-hide="pageTracking.isLastPage()">Last</a></div></div></div><div flex="50" flex-order="3" flex-gt-md="40" flex-order-gt-md="3" flex-gt-lg="30"><div class="pagination-per-page" layout="row" layout-align="right"><div>Show</div><div ng-repeat="i in pageTracking.itemSizeList"><button ng-disabled="pageTracking.isItemsPerPage(i)" ng-click="pageTracking.setItemsPerPage(i)">{{ i }}</button></div></div></div></div></div>');
 }]);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
