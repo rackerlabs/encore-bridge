@@ -2655,6 +2655,21 @@ thead th .btn-link:focus {
 .button-group.demo-button-width {
   width: 250px;
 }
+.rxCheckbox input[type="checkbox"]:indeterminate + .fake-checkbox {
+  background-color: #16B9D4;
+  color: #ffffff;
+  border: 0;
+}
+rx-date-picker .popup {
+  border-width: 1px !important;
+}
+rx-date-picker .popup nav span.arrow:hover {
+  background: #d8d8d8;
+}
+rx-date-picker .popup .day.outOfMonth {
+  color: #bdbdbd;
+  background-color: inherit !important;
+}
 /*
  * rxCheckbox
  */
@@ -2704,8 +2719,7 @@ thead th .btn-link:focus {
   opacity: 0;
   cursor: pointer;
 }
-.rxCheckbox input[type="checkbox"]:checked + .fake-checkbox,
-.rxCheckbox input[type="checkbox"]:indeterminate + .fake-checkbox {
+.rxCheckbox input[type="checkbox"]:checked + .fake-checkbox {
   background-color: #16B9D4;
   color: #ffffff;
   border: 0;
@@ -2909,16 +2923,6 @@ rx-date-picker .popup .calendar .day.selected .circle {
 rx-date-picker .popup .calendar .day:not(.selected):hover .circle {
   background-color: #B5E2EB;
   color: #424242;
-}
-rx-date-picker .popup {
-  border-width: 1px !important;
-}
-rx-date-picker .popup nav span.arrow:hover {
-  background: #d8d8d8;
-}
-rx-date-picker .popup .day.outOfMonth {
-  color: #bdbdbd;
-  background-color: inherit !important;
 }
 rx-time-picker {
   box-sizing: border-box;

@@ -1,0 +1,9 @@
+.rxCheckbox {
+    input[type="checkbox"] {
+        &:indeterminate + .fake-checkbox {
+            background-color: @rxCheckbox-selected-background-color;
+            color: @rxCheckbox-text-color;
+            border: 0;
+        }
+    }
+}
