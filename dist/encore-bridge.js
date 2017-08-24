@@ -2802,21 +2802,6 @@ angular.module('encore.ui.elements')
 });
 
 angular.module('encore.ui.elements')
-.config(["$provide", function ($provide) {
-  $provide.decorator('rxActionMenuDirective', ["$delegate", function ($delegate) {
-    // https://github.com/angular/angular.js/issues/10149
-    _.each(['type', 'text'], function (key) {
-      $delegate[0].$$isolateBindings[key] = {
-        attrName: key,
-        mode: '@',
-        optional: true
-      };
-    });
-    return $delegate;
-  }]);
-}]);
-
-angular.module('encore.ui.elements')
 /**
  * @ngdoc directive
  * @name elements.directive:rxActionMenu
@@ -2881,6 +2866,21 @@ angular.module('encore.ui.elements')
             // https://github.com/angular-ui/bootstrap/blob/master/src/tooltip/tooltip.js
         }
     };
+}]);
+
+angular.module('encore.ui.elements')
+.config(["$provide", function ($provide) {
+  $provide.decorator('rxActionMenuDirective', ["$delegate", function ($delegate) {
+    // https://github.com/angular/angular.js/issues/10149
+    _.each(['type', 'text'], function (key) {
+      $delegate[0].$$isolateBindings[key] = {
+        attrName: key,
+        mode: '@',
+        optional: true
+      };
+    });
+    return $delegate;
+  }]);
 }]);
 
 /**
@@ -3195,12 +3195,55 @@ angular.module('encore.ui.rxRadio')
 angular.module('encore.ui.rxPopover', ['encore.ui.elements'])
 
 angular.module('encore.ui.rxPopover')
-.directive('rxPopover', ["rxActionMenuDirective", function (rxActionMenuDirective) {
-  var ddo = _.cloneDeep(rxActionMenuDirective[0]);
-  return _.assign(ddo, {
-    templateUrl: 'templates/rxPopover.html'
-  });
-}]);
+.directive('rxPopover', function () {
+    return {
+        restrict: 'EA',
+        controller: ["$scope", function ($scope) {
+            var displayed = false;
+
+            this.onChange = _.noop;
+
+            this.close = function () {
+                displayed = false;
+                this.onChange(displayed);
+            };
+
+            this.toggle = function () {
+                displayed = !displayed;
+                this.onChange(displayed);
+            };
+        }],
+        link: function (scope, element, attrs) {
+            attrs.$addClass('action-menu-container');
+        }
+    };
+})
+.directive('rxPopoverTrigger', function () {
+    return {
+        require: '^^rxPopover',
+        restrict: 'A',
+        link: function (scope, element, attrs, rxPopover) {
+            element.on('click', function () {
+                scope.$apply(function () {
+                    rxPopover.toggle();
+                });
+            });
+        }
+    };
+})
+.directive('rxPopoverContent', function () {
+    return {
+        require: '^^rxPopover',
+        restrict: 'E',
+        template: '<div class="action-list" ng-if="displayed" ng-transclude></div>',
+        transclude: true,
+        link: function (scope, element, attrs, rxPopover) {
+            rxPopover.onChange = function (displayed) {
+                scope.displayed = displayed;
+            };
+        }
+    };
+});
 
 /**
  * @ngdoc overview
@@ -5831,11 +5874,6 @@ angular.module('encore.bridge').run(['$templateCache', function($templateCache) 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
   $templateCache.put('templates/rxPaginate.html',
     '<div class="rx-paginate"><div class="pagination" layout="row" layout-wrap layout-align="justify top"><div flex="50" flex-order="2" flex-gt-md="20" flex-order-gt-md="1" flex-gt-lg="35" layout="row"><a class="back-to-top" tabindex="0" ng-click="scrollToTop()">Back to top</a><div hide show-gt-lg>Showing {{ pageTracking | PaginatedItemsSummary}} items</div></div><div flex="100" flex-order="1" flex-gt-md="40" flex-order-gt-md="2" flex-gt-lg="35"><div class="page-links" layout="row" layout-align="center"><div ng-class="{disabled: pageTracking.isFirstPage()}" class="pagination-first"><a hide show-gt-lg ng-click="pageTracking.goToFirstPage()" ng-hide="pageTracking.isFirstPage()">First</a></div><div ng-class="{disabled: pageTracking.isFirstPage()}" class="pagination-prev"><a ng-click="pageTracking.goToPrevPage()" ng-hide="pageTracking.isFirstPage()">« Prev</a></div><div ng-repeat="n in pageTracking | Page" ng-class="{active: pageTracking.isPage(n), \'page-number-last\': pageTracking.isPageNTheLastPage(n)}" class="pagination-page"><a ng-click="pageTracking.goToPage(n)">{{n + 1}}</a></div><div ng-class="{disabled: pageTracking.isLastPage() || pageTracking.isEmpty()}" class="pagination-next"><a ng-click="pageTracking.goToNextPage()" ng-hide="pageTracking.isLastPage() || pageTracking.isEmpty()">Next »</a></div><div ng-class="{disabled: pageTracking.isLastPage()}" class="pagination-last"><a hide show-gt-lg ng-click="pageTracking.goToLastPage()" ng-hide="pageTracking.isLastPage()">Last</a></div></div></div><div flex="50" flex-order="3" flex-gt-md="40" flex-order-gt-md="3" flex-gt-lg="30"><div class="pagination-per-page" layout="row" layout-align="right"><div>Show</div><div ng-repeat="i in pageTracking.itemSizeList"><button ng-disabled="pageTracking.isItemsPerPage(i)" ng-click="pageTracking.setItemsPerPage(i)">{{ i }}</button></div></div></div></div></div>');
-}]);
-
-angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
-  $templateCache.put('templates/rxPopover.html',
-    '<div><button ng-if="!text" class="rs-cog" ng-click="toggle()"></button><div class="rs-popover" ng-if="displayed"><div class="rs-popover-arrow rs-popover-arrow-top-left"></div><div class="rs-popover-content" ng-transclude></div></div></div>');
 }]);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {

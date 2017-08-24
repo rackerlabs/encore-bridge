@@ -1,0 +1,43 @@
+rx-popover, [rx-popover] {
+  display: inline-block;
+
+  .action-list {
+    top: 2em;
+    left: -1em;
+    min-width: 300px;
+    padding: 1.25em;
+
+    &:before {
+      content: "\f0d8";
+      text-shadow: rgba(0, 0, 0, 0.35) 0px -1px 1px;
+      font-family: FontAwesome;
+      text-decoration: inherit;
+      color: @white;
+      font-size: 24px;
+      display: block;
+      left: 1em;
+      position: absolute;
+      top: -15px;
+      width: 0;
+      z-index: 1;
+    }
+  }
+
+  &.left .action-list {
+    left: auto;
+    right: -1em;
+
+    &:before {
+      left: auto;
+      right: 1.5em;
+    }
+  }
+
+  .action-buttons {
+    text-align: right;
+
+    .button {
+      margin-bottom: 0;
+    }
+  }
+}
