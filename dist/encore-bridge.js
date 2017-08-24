@@ -1,6 +1,239 @@
-angular.module('encore.bridge', ['encore.ui.layout','encore.ui.rxApp','encore.ui.rxCollapse','encore.ui.rxForm','encore.ui.rxPopover','encore.ui.rxRadio','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.utilities','encore.ui.elements']);
+angular.module('encore.bridge', ['encore.ui.layout','encore.ui.rxApp','encore.ui.rxCollapse','encore.ui.rxForm','encore.ui.rxPaginate','encore.ui.rxPopover','encore.ui.rxRadio','encore.ui.rxSortableColumn','encore.ui.rxStatusColumn','encore.ui.utilities','encore.ui.elements']);
 
 angular.module('encore.ui.utilities', []);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc parameters
+ * @name utilities.constant:UtcOffsets
+ *
+ * @description
+ * List of known UTC Offset Values
+ * See https://en.wikipedia.org/wiki/List_of_UTC_time_offsets
+ *
+ * Utility service used by {@link elements.directive:rxTimePicker rxTimePicker}.
+ */
+.constant('UtcOffsets', [
+    '-12:00',
+    '-11:00',
+    '-10:00',
+    '-09:30',
+    '-09:00',
+    '-08:00',
+    '-07:00',
+    '-06:00',
+    '-05:00',
+    '-04:30',
+    '-04:00',
+    '-03:30',
+    '-03:00',
+    '-02:00',
+    '-01:00',
+    '+00:00',
+    '+01:00',
+    '+02:00',
+    '+03:00',
+    '+03:30',
+    '+04:00',
+    '+04:30',
+    '+05:00',
+    '+05:30',
+    '+05:45',
+    '+06:00',
+    '+06:30',
+    '+07:00',
+    '+08:00',
+    '+08:30',
+    '+08:45',
+    '+09:00',
+    '+09:30',
+    '+10:00',
+    '+10:30',
+    '+11:00',
+    '+12:00',
+    '+12:45',
+    '+13:00',
+    '+14:00',
+]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:UnauthorizedInterceptor
+ * @description
+ * Simple injector which will intercept HTTP responses. If a HTTP 401 response error code is returned,
+ * the ui redirects to `/login`.
+ *
+ * @requires $q
+ * @requires @window
+ * @requires utilities.service:Session
+ *
+ * @example
+ * <pre>
+ * angular.module('encoreApp', ['encore.ui'])
+ *     .config(function ($httpProvider) {
+ *         $httpProvider.interceptors.push('UnauthorizedInterceptor');
+ *     });
+ * </pre>
+ */
+.factory('UnauthorizedInterceptor', ["$q", "$window", "Session", function ($q, $window, Session) {
+    var svc = {
+        redirectPath: function () {
+            // This brings in the entire relative URI (including the path
+            // specified in a <base /> tag), along with query params as a
+            // string.
+            // e.g https://www.google.com/search?q=woody+wood+pecker
+            // window.location.pathname = /search?q=woody+wood+pecker
+            return $window.location.pathname;
+        },
+        redirect: function (loginPath) {
+            loginPath = loginPath ? loginPath : '/login?redirect=';
+            $window.location = loginPath + encodeURIComponent(svc.redirectPath());
+        },
+        responseError: function (response) {
+            if (response.status === 401) {
+                Session.logout(); // Logs out user by removing token
+                svc.redirect();
+            }
+
+            return $q.reject(response);
+        }
+    };
+
+    return svc;
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:TokenInterceptor
+ * @description
+ * Simple $http injector which will intercept http request and inject the
+ * Rackspace Identity's token into every http request.
+ *
+ * @requires rxSession.service:Session
+ *
+ * @example
+ * <pre>
+ * angular.module('encoreApp', ['encore.ui'])
+ *     .config(function ($httpProvider) {
+ *         $httpProvider.interceptors.push('TokenInterceptor');
+ *     });
+ * </pre>
+ */
+.provider('TokenInterceptor', function () {
+    var exclusionList = this.exclusionList = [ 'rackcdn.com' ];
+
+    this.$get = ["Session", "$document", function (Session, $document) {
+        var url = $document[0].createElement('a');
+        return {
+            request: function (config) {
+                // Don't add the X-Auth-Token if the request URL matches
+                // something in exclusionList
+                // We're specifically looking at hostnames, so we have to
+                // do the `createElement('a')` trick to turn the config.url
+                // into something with a `.hostname`
+                url.href = config.url;
+                var exclude = _.some(exclusionList, function (item) {
+                    if (_.contains(url.hostname, item)) {
+                        return true;
+                    }
+                });
+
+                if (!exclude) {
+                    config.headers['X-Auth-Token'] = Session.getTokenId();
+                }
+
+                return config;
+            }
+        };
+    }];
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:Session
+ * @description
+ *
+ * Service for managing user session in encore-ui.
+ *
+ * @requires utilities.service:rxLocalStorage
+ *
+ * @example
+ * <pre>
+ * Session.getToken(); // Returns the stored token
+ * Session.storeToken(token); // Stores token
+ * Session.logout(); // Logs user off
+ * Session.isCurrent(); // Returns true/false if the token has expired.
+ * Session.isAuthenticated(); // Returns true/false if the user token is valid.
+ * </pre>
+ */
+.factory('Session', ["rxLocalStorage", function (rxLocalStorage) {
+    var TOKEN_ID = 'encoreSessionToken';
+    var session = {};
+
+    /**
+    * Dot walks the token without throwing an error.
+    * If key exists, returns value otherwise returns undefined.
+    */
+    session.getByKey = function (key) {
+        var tokenValue,
+            token = session.getToken(),
+            keys = key ? key.split('.') : undefined;
+
+        if (_.isEmpty(token) || !keys) {
+            return;
+        }
+
+        tokenValue = _.reduce(keys, function (val, key) {
+            return val ? val[key] : undefined;
+        }, token);
+
+        return tokenValue;
+    };
+
+    session.getToken = function () {
+        return rxLocalStorage.getObject(TOKEN_ID);
+    };
+
+    session.getTokenId = function () {
+        return session.getByKey('access.token.id');
+    };
+
+    session.getUserId = function () {
+        return session.getByKey('access.user.id');
+    };
+
+    session.getUserName = function () {
+        return session.getByKey('access.user.name');
+    };
+
+    session.storeToken = function (token) {
+        rxLocalStorage.setObject(TOKEN_ID, token);
+    };
+
+    session.logout = function () {
+        rxLocalStorage.removeItem(TOKEN_ID);
+    };
+
+    session.isCurrent = function () {
+        var expireDate = session.getByKey('access.token.expires');
+
+        if (expireDate) {
+            return new Date(expireDate) > _.now();
+        }
+
+        return false;
+    };
+
+    session.isAuthenticated = function () {
+        var token = session.getToken();
+        return _.isEmpty(token) ? false : session.isCurrent();
+    };
+
+    return session;
+}]);
 
 angular.module('encore.ui.utilities')
 /**
@@ -348,6 +581,41 @@ angular.module('encore.ui.utilities')
 
 angular.module('encore.ui.utilities')
 /**
+ * @ngdoc service
+ * @name utilities.service:rxSortUtil
+ * @description
+ * Service which provided utility methods for sorting collections.
+ *
+ * @example
+ * <pre>
+ * rxSortUtil.getDefault() // returns a sort object with name as the default.
+ * rxSortUtil.sortCol($scope, 'name') // sorts the collection based on the predicate
+ * </pre>
+ */
+.factory('rxSortUtil', function () {
+    var util = {};
+
+    util.getDefault = function (property, reversed) {
+        return { predicate: property, reverse: reversed };
+    };
+
+    util.sortCol = function ($scope, predicate) {
+        var reverse = ($scope.sort.predicate === predicate) ? !$scope.sort.reverse : false;
+        $scope.sort = { reverse: reverse, predicate: predicate };
+
+        // This execution should be moved outside of the scope for rxSortUtil
+        // already rxSortUtil.sortCol has to be wrapped, and can be implemented there
+        // rather than have rxSortUtil.sortCol check/expect for a pager to be present.
+        if ($scope.pager) {
+            $scope.pager.pageNumber = 0;
+        }
+    };
+
+    return util;
+});
+
+angular.module('encore.ui.utilities')
+/**
  * @ngdoc filter
  * @name utilities.filter:rxSortEmptyTop
  * @description
@@ -386,6 +654,536 @@ angular.module('encore.ui.utilities')
         };
 
         return $filter('orderBy')(array, sortFn, reverse);
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxPromiseNotifications
+ * @description Manages displaying messages for a promise.
+ *
+ * It is a common pattern with API requests that you show a loading message when an action is requested, followed
+ * by either a _success_ or _failure_ message depending on the result of the call.  `rxPromiseNotifications` is the
+ * service created for this pattern.
+ *
+ * @example
+ * <pre>
+ * rxPromiseNotifications.add($scope.deferred.promise, {
+ *     loading: 'Loading Message',
+ *     success: 'Success Message',
+ *     error: 'Error Message'
+ * });
+ * </pre>
+ */
+.factory('rxPromiseNotifications', ["rxNotify", "$rootScope", "$q", "$interpolate", function (rxNotify, $rootScope, $q, $interpolate) {
+    var scope = $rootScope.$new();
+
+    /**
+     * Removes 'loading' message from stack
+     * @private
+     * @this Scope used for storing messages data
+     */
+    var dismissLoading = function () {
+        if (this.loadingMsg) {
+            rxNotify.dismiss(this.loadingMsg);
+        }
+    };
+
+    /**
+     * Shows either a success or error message
+     * @private
+     * @this Scope used for storing messages data
+     * @param {string} msgType Message type to be displayed
+     * @param {Object} response Data that's returned from the promise
+     */
+    var showMessage = function (msgType, response) {
+        if (msgType in this.msgs && !this.isCancelled) {
+            // convert any bound properties into a string based on obj from result
+            var exp = $interpolate(this.msgs[msgType]);
+            var msg = exp(response);
+
+            var msgOpts = {
+                type: msgType
+            };
+
+            // if a custom stack is passed in, specify that for the message options
+            if (this.stack) {
+                msgOpts.stack = this.stack;
+            }
+
+            rxNotify.add(msg, msgOpts);
+        }
+    };
+
+    /**
+     * Cancels all messages from displaying
+     * @private
+     * @this Scope used for storing messages data
+     */
+    var cancelMessages = function () {
+        this.isCancelled = true;
+        this.deferred.reject();
+    };
+
+    /**
+     * @name add
+     * @ngdoc method
+     * @methodOf utilities.service:rxPromiseNotifications
+     * @description
+     * @param {Object} promise
+     * The promise to attach to for showing success/error messages
+     * @param {Object} msgs
+     * The messages to display. Can take in HTML/expressions
+     * @param {String} msgs.loading
+     * Loading message to show while promise is unresolved
+     * @param {String=} msgs.success
+     * Success message to show on successful promise resolve
+     * @param {String=} msgs.error
+     * Error message to show on promise rejection
+     * @param {String=} [stack='page']
+     * What stack to add to
+     */
+    var add = function (promise, msgs, stack) {
+        var deferred = $q.defer();
+
+        var uid = _.uniqueId('promise_');
+
+        scope[uid] = {
+            isCancelled: false,
+            msgs: msgs,
+            stack: stack
+        };
+
+        // add loading message to page
+        var loadingOpts = {
+            loading: true
+        };
+
+        if (stack) {
+            loadingOpts.stack = stack;
+        }
+
+        if (msgs.loading) {
+            scope[uid].loadingMsg = rxNotify.add(msgs.loading, loadingOpts);
+        }
+
+        // bind promise to show message actions
+        deferred.promise
+            .then(showMessage.bind(scope[uid], 'success'), showMessage.bind(scope[uid], 'error'))
+            .finally(dismissLoading.bind(scope[uid]));
+
+        // react based on promise passed in
+        promise.then(function (response) {
+            deferred.resolve(response);
+        }, function (reason) {
+            deferred.reject(reason);
+        });
+
+        // if page change, cancel everything
+        $rootScope.$on('$routeChangeStart', cancelMessages.bind(scope[uid]));
+
+        // attach deferred to scope for later access
+        scope[uid].deferred = deferred;
+
+        return scope[uid];
+    };
+
+    return {
+        add: add
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxPaginateUtils
+ * @description
+ * A few utilities to calculate first, last, and number of items.
+ */
+.factory('rxPaginateUtils', function () {
+    var rxPaginateUtils = {};
+
+    rxPaginateUtils.firstAndLast = function (pageNumber, itemsPerPage, totalNumItems) {
+        var first = pageNumber * itemsPerPage;
+        var added = first + itemsPerPage;
+        var last = (added > totalNumItems) ? totalNumItems : added;
+
+        return {
+            first: first,
+            last: last,
+        };
+
+    };
+
+    // Given the user requested pageNumber and itemsPerPage, and the number of items we'll
+    // ask a paginated API for (serverItemsPerPage), calculate what page number the API
+    // should be asked for, how and far of an offset to use to slice into the returned items.
+    // It is expected that authors of getItems() functions will use this, and do the slice themselves
+    // before resolving getItems()
+    rxPaginateUtils.calculateApiVals = function (pageNumber, itemsPerPage, serverItemsPerPage) {
+        var serverPageNumber = Math.floor(pageNumber * itemsPerPage / serverItemsPerPage);
+        var offset = pageNumber * itemsPerPage - serverItemsPerPage * serverPageNumber;
+
+        return {
+            serverPageNumber: serverPageNumber,
+            offset: offset
+        };
+    };
+
+    return rxPaginateUtils;
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxNotify
+ * @description
+ * Manages page messages for an application.
+ *
+ * # Stacks
+ *
+ * Stacks are just separate notification areas. Normally, all messages created will go to the `page` stack, which
+ * should be displayed at the top of the page. The `page` stack is used for page-level messages.
+ *
+ * ## Using the Page Stack
+ *
+ * The default notification stack is added by default to the `rxPage` template (see {@link rxApp}), so it should be
+ * ready to use without any work (unless your app uses a custom template).  The
+ * {@link rxNotify.directive:rxNotifications rxNotifications} directive will gather all notifications for a particular
+ * stack into a single point on the page.  By default, this directive will collect all notifications in the `page`
+ * stack.
+ *
+ * <pre>
+ * <rx-notifications></rx-notifications>
+ * </pre>
+ *
+ * See {@link rxNotify.directive:rxNotification rxNotification} for more details.
+ *
+ * ## Using a Custom Stack
+ *
+ * You can also create custom stacks for specific notification areas. Say you have a form on your page that you want to
+ * add error messages to. You can create a custom stack for this form and send form-specific messages to it.
+ *
+ * Please see the *Custom Stack* usage example in the `rxNotify` {@link /encore-ui/#/components/rxForm demo}.
+ *
+ * ## Adding an `rxNotification` to the Default Stack
+ *
+ * If you need to add a notification via your Angular template, just set the `stack` parameter on the opening
+ * `<rx-notification>` tag.  This will allow the notification to be added via the `rxNotify.add()` function.
+ *
+ * <pre>
+ * <rx-notification type="error" stack="page">
+ *   This is an error message being added to the "page" stack with <strong>Custom</strong> html.
+ * </rx-notification>
+ * </pre>
+ *
+ * ## Adding a New Message Queue via `rxNotify`
+ *
+ * To add a new message to a stack, inject `rxNotify` into your Angular function and run:
+ *
+ * <pre>
+ * rxNotify.add('My Message Text');
+ * </pre>
+ *
+ * This will add a new message to the default stack (`page`) with all default options set.  To customize options, pass
+ * in an `object` as the second argument with your specific options set:
+ *
+ * <pre>
+ * rxNotify.add('My Message Text', {
+ *   stack: 'custom',
+ *   type: 'warning'
+ * });
+ * </pre>
+ *
+ * ## Dismissing a message programatically
+ *
+ * Most messages are dismissed either by the user, a route change or using the custom `dismiss` property.  If you need
+ * to dismiss a message programmaticaly, you can run `rxNotify.dismiss(message)`, where *message* is the `object`
+ * returned from `rxNotify.add()`.
+ *
+ * ## Clearing all messages in a stack
+ *
+ * You can clear all messages in a specific stack programmatically via the `rxNotify.clear()` function. Simply pass in
+ * the name of the stack to clear:
+ *
+ * <pre>
+ * rxNotify.clear('page');
+ * </pre>
+ *
+ */
+.service('rxNotify', ["$interval", "$rootScope", function ($interval, $rootScope) {
+    var defaultStack = 'page';
+    var stacks = {};
+
+    // initialize a default stack
+    stacks[defaultStack] = [];
+
+    // array that contains messages to show on 'next' (when route changes)
+    var nextQueue = [];
+
+    var messageDefaults = {
+        type: 'info',
+        timeout: -1,
+        loading: false,
+        show: 'immediate',
+        dismiss: 'next',
+        ondismiss: _.noop(),
+        stack: 'page',
+        repeat: true
+    };
+
+    /**
+     * @function
+     * @private
+     * @description Adds a message to a stack
+     *
+     * @param {Object} message The message object to add.
+     */
+    var addToStack = function (message) {
+        // if repeat is false, check to see if the message is already in the stack
+        if (!message.repeat) {
+            if (_.find(stacks[message.stack], { text: message.text, type: message.type })) {
+                return;
+            }
+        }
+
+        // if timeout is set, we should remove message after time expires
+        if (message.timeout > -1) {
+            dismissAfterTimeout(message);
+        }
+
+        // make sure there's actual text to add
+        if (message.text.length > 0) {
+            stacks[message.stack].push(message);
+        }
+    };//addToStack
+
+    /**
+     * @function
+     * @private
+     * @description
+     * Sets a timeout to wait a specific time then dismiss message
+     *
+     * @param {Object} message The message object to remove.
+     */
+    function dismissAfterTimeout (message) {
+        // convert seconds to milliseconds
+        var timeoutMs = message.timeout * 1000;
+
+        $interval(function () {
+            dismiss(message);
+        }, timeoutMs, 1);
+    }
+
+    /**
+     * @function
+     * @private
+     * @description
+     * Shows/dismisses message after scope.prop change to true
+     *
+     * @param {Object} message The message object to show/dismiss
+     * @param {String} changeType Whether to 'show' or 'dismiss' the message
+     */
+    var changeOnWatch = function (message, changeType) {
+        var scope = message[changeType][0];
+        var prop = message[changeType][1];
+
+        // function to run to change message visibility
+        var cb;
+
+        // switch which function to call based on type
+        if (changeType === 'show') {
+            cb = addToStack;
+        } else if (changeType === 'dismiss') {
+            cb = dismiss;
+
+            // add a listener to dismiss message if scope is destroyed
+            scope.$on('$destroy', function () {
+                dismiss(message);
+            });
+        }
+
+        scope.$watch(prop, function (newVal) {
+            if (newVal === true) {
+                cb(message);
+            }
+        });
+    };//changeOnWatch
+
+    /**
+     * @function
+     * @private
+     * @description removes all messages that are shown
+     */
+    var clearAllShown = function () {
+        _.forOwn(stacks, function (index, key) {
+            stacks[key] = _.reject(stacks[key], {
+                'dismiss': messageDefaults.dismiss
+            });
+        });
+    };
+
+    /**
+     * @function
+     * @private
+     * @description adds messages marked as 'next' to relevant queues
+     */
+    var addAllNext = function () {
+        _.each(nextQueue, function (message) {
+            // add to appropriate stack
+            addToStack(message);
+        });
+
+        // empty nextQueue of messages
+        nextQueue.length = 0;
+    };
+
+    /**
+     * @name clear
+     * @ngdoc method
+     * @methodOf utilities.service:rxNotify
+     * @description deletes all messages in a stack
+     *
+     * @param {String} stack The name of the stack to clear
+     */
+    var clear = function (stack) {
+        if (stacks.hasOwnProperty(stack)) {
+            // @see http://davidwalsh.name/empty-array
+            stacks[stack].length = 0;
+        }
+    };
+
+    /**
+     * @name dismiss
+     * @ngdoc method
+     * @methodOf utilities.service:rxNotify
+     * @description removes a specific message from a stack
+     *
+     * @param {Object} msg Message object to remove
+     */
+    function dismiss (msg) {
+        // remove message by id
+        stacks[msg.stack] = _.reject(stacks[msg.stack], { 'id': msg.id });
+
+        if (_.isFunction(msg.ondismiss)) {
+            $interval(function () {
+                msg.ondismiss(msg);
+            }, 0, 1);
+        }
+    }//dismiss()
+
+    /**
+     * @name add
+     * @ngdoc method
+     * @methodOf utilities.service:rxNotify
+     * @description adds a message to a stack
+     *
+     * @param {String} text Message text
+     * @param {Object=} options Message options
+     * @param {String=} [options.type='info'] Message Type
+     *
+     * Values:
+     * * 'info'
+     * * 'warning'
+     * * 'error'
+     * * 'success'
+     * @param {Integer=} [options.timeout=-1]
+     * Time (in seconds) for message to appear. A value of -1 will display
+     * the message until it is dismissed or the user navigates away from the
+     * page.
+     *
+     * Values:
+     * * -1
+     * * Any positive integer
+     * @param {Boolean=} [options.repeat=true]
+     * Whether the message should be allowed to appear more than once in the stack.
+     * @param {Boolean=} [options.loading=false]
+     * Replaces type icon with spinner. Removes option for use to dismiss message.
+     *
+     * You usually want to associate this with a 'dismiss' property.
+     * @param {String|Array=} [options.show='immediate']
+     * When to have the message appear.
+     *
+     * Values:
+     * * 'immediate'
+     * * 'next'
+     * * [scope, 'property']
+     *   * Pass in a property on a scope to watch for a change.
+     *     When the property equals true, the message is shown.
+     * @param {String|Array=} [options.dismiss='next']
+     * When to have the message disappear.
+     *
+     * Values:
+     * * 'next'
+     * * [scope, 'property']
+     *     * Pass in a property on a scope to watch for a change.
+     *       When the property equals true, the message is dismissed.
+     * @param {Function=} [options.ondismiss=_.noop]
+     * Function that should be run when message is dismissed.
+     * @param {String=} [options.stack='page']
+     * Which message stack the message gets added to.
+     *
+     * Values:
+     * * 'page'
+     * * Any String *(results in a custom stack)*
+     *
+     * @returns {Object} message object
+     */
+    var add = function (text, options) {
+        var message = {
+            text: text
+        };
+
+        options = options || {};
+
+        // add unique id to message for easier identification
+        options.id = _.uniqueId();
+
+        // if stack is specified, add to different stack
+        var stack = options.stack || defaultStack;
+
+        // if new stack doesn't exist, create it
+        if (!_.isArray(stacks[stack])) {
+            stacks[stack] = [];
+        }
+
+        // merge options with defaults (overwriting defaults where applicable)
+        _.defaults(options, messageDefaults);
+
+        // add options to message
+        _.merge(message, options);
+
+        // if dismiss is set to array, watch variable
+        if (_.isArray(message.dismiss)) {
+            changeOnWatch(message, 'dismiss');
+        }
+
+        // add message to stack immediately if has default show value
+        if (message.show === messageDefaults.show) {
+            addToStack(message);
+        } else if (message.show === 'next') {
+            nextQueue.push(message);
+        } else if (_.isArray(message.show)) {
+            changeOnWatch(message, 'show');
+        }
+
+        // return message object
+        return message;
+    };//add()
+
+    // add a listener to root scope which listens for the event that gets fired when the route successfully changes
+    $rootScope.$on('$routeChangeSuccess', function processRouteChange () {
+        clearAllShown();
+        addAllNext();
+    });
+
+    // expose public API
+    return {
+        add: add,
+        clear: clear,
+        dismiss: dismiss,
+        stacks: stacks
     };
 }]);
 
@@ -754,235 +1552,380 @@ angular.module('encore.ui.utilities')
 
 angular.module('encore.ui.utilities')
 /**
- * @ngdoc parameters
- * @name utilities.constant:UtcOffsets
- *
+ * @ngdoc filter
+ * @name utilities.filter:PaginatedItemsSummary
  * @description
- * List of known UTC Offset Values
- * See https://en.wikipedia.org/wiki/List_of_UTC_time_offsets
+ * Given an active pager (i.e. the result of PageTracking.createInstance()),
+ * return a string like "26-50 of 500", when on the second page of a list of
+ * 500 items, where we are displaying 25 items per page
  *
- * Utility service used by {@link elements.directive:rxTimePicker rxTimePicker}.
+ * @param {Object} pager The instance of the PageTracking service. If not
+ *
+ * @returns {String} The list of page numbers that will be displayed.
  */
-.constant('UtcOffsets', [
-    '-12:00',
-    '-11:00',
-    '-10:00',
-    '-09:30',
-    '-09:00',
-    '-08:00',
-    '-07:00',
-    '-06:00',
-    '-05:00',
-    '-04:30',
-    '-04:00',
-    '-03:30',
-    '-03:00',
-    '-02:00',
-    '-01:00',
-    '+00:00',
-    '+01:00',
-    '+02:00',
-    '+03:00',
-    '+03:30',
-    '+04:00',
-    '+04:30',
-    '+05:00',
-    '+05:30',
-    '+05:45',
-    '+06:00',
-    '+06:30',
-    '+07:00',
-    '+08:00',
-    '+08:30',
-    '+08:45',
-    '+09:00',
-    '+09:30',
-    '+10:00',
-    '+10:30',
-    '+11:00',
-    '+12:00',
-    '+12:45',
-    '+13:00',
-    '+14:00',
-]);
+.filter('PaginatedItemsSummary', ["rxPaginateUtils", function (rxPaginateUtils) {
+    return function (pager) {
+        var template = '<%= first %>-<%= last %> of <%= total %>';
+        if (pager.showAll || pager.itemsPerPage > pager.total) {
+            template = '<%= total %>';
+        }
+        var firstAndLast = rxPaginateUtils.firstAndLast(pager.currentPage(), pager.itemsPerPage, pager.total);
+        return _.template(template, {
+            first: firstAndLast.first + 1,
+            last: firstAndLast.last,
+            total: pager.total
+        });
+    };
+}]);
 
 angular.module('encore.ui.utilities')
 /**
- * @ngdoc service
- * @name utilities.service:UnauthorizedInterceptor
+ * @ngdoc filter
+ * @name utilities.filter:Paginate
  * @description
- * Simple injector which will intercept HTTP responses. If a HTTP 401 response error code is returned,
- * the ui redirects to `/login`.
+ * This is the pagination filter that is used to calculate the division in the
+ * items list for the paging.
  *
- * @requires $q
- * @requires @window
- * @requires utilities.service:Session
+ * @param {Object} items The list of items that are to be sliced into pages
+ * @param {Object} pager The instance of the PageTracking service. If not
+ * specified, a new one will be created.
  *
- * @example
- * <pre>
- * angular.module('encoreApp', ['encore.ui'])
- *     .config(function ($httpProvider) {
- *         $httpProvider.interceptors.push('UnauthorizedInterceptor');
- *     });
- * </pre>
+ * @returns {Object} The list of items for the current page in the PageTracking object
  */
-.factory('UnauthorizedInterceptor', ["$q", "$window", "Session", function ($q, $window, Session) {
-    var svc = {
-        redirectPath: function () {
-            // This brings in the entire relative URI (including the path
-            // specified in a <base /> tag), along with query params as a
-            // string.
-            // e.g https://www.google.com/search?q=woody+wood+pecker
-            // window.location.pathname = /search?q=woody+wood+pecker
-            return $window.location.pathname;
-        },
-        redirect: function (loginPath) {
-            loginPath = loginPath ? loginPath : '/login?redirect=';
-            $window.location = loginPath + encodeURIComponent(svc.redirectPath());
-        },
-        responseError: function (response) {
-            if (response.status === 401) {
-                Session.logout(); // Logs out user by removing token
-                svc.redirect();
-            }
+.filter('Paginate', ["PageTracking", "rxPaginateUtils", function (PageTracking, rxPaginateUtils) {
+    return function (items, pager) {
+        if (!pager) {
+            pager = PageTracking.createInstance();
+        }
+        if (pager.showAll) {
+            pager.total = items.length;
+            return items;
+        }
+        if (items) {
 
-            return $q.reject(response);
+            pager.total = items.length;
+            // We were previously on the last page, but enough items were deleted
+            // to reduce the total number of pages. We should now jump to whatever the
+            // new last page is
+            // When loading items over the network, our first few times through here
+            // will have totalPages===0. We do the _.max to ensure that
+            // we never set pageNumber to -1
+            if (pager.pageNumber + 1 > pager.totalPages) {
+                if (!pager.isLastPage()) {
+                    pager.goToLastPage();
+                }
+            }
+            var firstLast = rxPaginateUtils.firstAndLast(pager.currentPage(), pager.itemsPerPage, items.length);
+            return items.slice(firstLast.first, firstLast.last);
         }
     };
-
-    return svc;
 }]);
 
 angular.module('encore.ui.utilities')
 /**
  * @ngdoc service
- * @name utilities.service:TokenInterceptor
+ * @name utilities.service:PageTracking
  * @description
- * Simple $http injector which will intercept http request and inject the
- * Rackspace Identity's token into every http request.
- *
- * @requires rxSession.service:Session
+ * This is the data service that can be used in conjunction with the pagination
+ * objects to store/control page display of data tables and other items.
+ * This is intended to be used with {@link rxPaginate.directive:rxPaginate}
+ * @namespace PageTracking
  *
  * @example
  * <pre>
- * angular.module('encoreApp', ['encore.ui'])
- *     .config(function ($httpProvider) {
- *         $httpProvider.interceptors.push('TokenInterceptor');
- *     });
+ * $scope.pager = PageTracking.createInstance({showAll: true, itemsPerPage: 15});
+ * </pre>
+ * <pre>
+ * <rx-paginate page-tracking="pager"></rx-paginate>
  * </pre>
  */
-.provider('TokenInterceptor', function () {
-    var exclusionList = this.exclusionList = [ 'rackcdn.com' ];
+.factory('PageTracking', ["$q", "rxLocalStorage", "rxPaginateUtils", function ($q, rxLocalStorage, rxPaginateUtils) {
+    var PageTracking = {
+        /**
+        * @ngdoc method
+        * @name utilities.service:PageTracking#createInstance
+        * @methodOf utilities.service:PageTracking
+        * @param {Object} options Configuration options for the pager
+        * @param {number} [options.itemsPerPage=200] The default number of items to display per page.
+        * If you choose a value * that is not in the default set ot itemsPerPage options (50, 200, 350, 500),
+        * then that value will be inserted into that list in the appropriate place
+        * @param {number[]} [options.itemSizeList=(50, 200, 350, 500)] The "items per page" options to give to the user.
+        * As these * same values are used all throughout Encore, you probably should not alter them for your table.
+        * @param {boolean} [options.persistItemsPerPage=true] Whether or not a change to this pager's itemsPerPage
+        * should be persisted globally to all other pagers
+        * @param {number} [options.pagesToShow=5] This is the number of page numbers to show
+        * in the pagination controls
+        * @param {boolean} [options.showAll=false] This is used to determine whether or not to use
+        * the pagination. If `true`, then all items will be displayed, i.e. pagination will not be used
+        *
+        * @description This is used to generate the instance of the
+        * PageTracking object. It takes an optional `options` object, allowing you to customize the default
+        * pager behaviour.
+        *
+        * @return {Object} A new pager instance to be passed to the `page-tracking` attribute of `<rx-paginate>`
+        * (see {@link rxPaginate.directive:rxPaginate})
+        */
+        createInstance: function (options) {
+            options = options ? options : {};
+            var tracking = new PageTrackingObject(options);
+            return tracking.pager;
+        },
 
-    this.$get = ["Session", "$document", function (Session, $document) {
-        var url = $document[0].createElement('a');
-        return {
-            request: function (config) {
-                // Don't add the X-Auth-Token if the request URL matches
-                // something in exclusionList
-                // We're specifically looking at hostnames, so we have to
-                // do the `createElement('a')` trick to turn the config.url
-                // into something with a `.hostname`
-                url.href = config.url;
-                var exclude = _.some(exclusionList, function (item) {
-                    if (_.contains(url.hostname, item)) {
-                        return true;
-                    }
-                });
+        /*
+        * @method userSelectedItemsPerPage This method sets a new global itemsPerPage value
+        */
+        userSelectedItemsPerPage: function (itemsPerPage) {
+            rxLocalStorage.setItem('rxItemsPerPage', itemsPerPage);
+        }
+    };
 
-                if (!exclude) {
-                    config.headers['X-Auth-Token'] = Session.getTokenId();
+    function PageTrackingObject (opts) {
+        var pager = _.defaults(_.cloneDeep(opts), {
+            itemsPerPage: 200,
+            persistItemsPerPage: true,
+            pagesToShow: 5,
+            pageNumber: 0,
+            pageInit: false,
+            total: 0,
+            showAll: false,
+            itemSizeList: [50, 200, 350, 500]
+        });
+
+        // This holds all the items we've received. For UI pagination,
+        // this will be the entire set. For API pagination, this will be
+        // whatever chunk of data the API decided to send us
+        pager.localItems = [];
+
+        var itemsPerPage = pager.itemsPerPage;
+        var itemSizeList = pager.itemSizeList;
+
+        // If itemSizeList doesn't contain the desired itemsPerPage,
+        // then find the right spot in itemSizeList and insert the
+        // itemsPerPage value
+        if (!_.contains(itemSizeList, itemsPerPage)) {
+            var index = _.sortedIndex(itemSizeList, itemsPerPage);
+            itemSizeList.splice(index, 0, itemsPerPage);
+        }
+
+        var selectedItemsPerPage = parseInt(rxLocalStorage.getItem('rxItemsPerPage'));
+
+        // If the user has chosen a desired itemsPerPage, make sure we're respecting that
+        // However, a value specified in the options will take precedence
+        if (!opts.itemsPerPage && !_.isNaN(selectedItemsPerPage) && _.contains(itemSizeList, selectedItemsPerPage)) {
+            pager.itemsPerPage = selectedItemsPerPage;
+        }
+
+        Object.defineProperties(pager, {
+            'items': {
+                // This returns the slice of data for whatever current page the user is on.
+                // It is used for server-side pagination.
+                get: function () {
+                    var info = rxPaginateUtils.firstAndLast(pager.pageNumber, pager.itemsPerPage, pager.total);
+                    return pager.localItems.slice(info.first - pager.cacheOffset, info.last - pager.cacheOffset);
                 }
+            },
 
-                return config;
+            'totalPages': {
+                get: function () { return Math.ceil(pager.total / pager.itemsPerPage); }
             }
+        });
+
+        function updateCache (pager, pageNumber, localItems) {
+            var numberOfPages = Math.floor(localItems.length / pager.itemsPerPage);
+            var cachedPages = numberOfPages ? _.range(pageNumber, pageNumber + numberOfPages) : [pageNumber];
+            pager.cachedPages = !_.isEmpty(cachedPages) ? cachedPages : [pageNumber];
+            pager.cacheOffset = pager.cachedPages[0] * pager.itemsPerPage;
+        }
+
+        updateCache(pager, 0, pager.localItems);
+
+        var updateItems = function (pageNumber) {
+            // This is the function that gets used when doing UI pagination,
+            // thus we're not waiting for the pageNumber to come back from a service,
+            // so we should set it right away. We can also return an empty items list,
+            // because for UI pagination, the items themselves come in through the Pagination
+            // filter
+            pager.pageNumber = pageNumber;
+            var data = {
+                items: [],
+                pageNumber: pageNumber,
+                totalNumberOfItems: pager.total
+            };
+            return $q.when(data);
         };
-    }];
-});
+        pager.updateItemsFn = function (fn) {
+            updateItems = fn;
+        };
+
+        // Used by rxPaginate to tell the pager that it should grab
+        // new items from itemsPromise, where itemsPromise is the promise
+        // returned by a product's getItems() method.
+        // Set shouldUpdateCache to false if the pager should not update its cache with these values
+        pager.newItems = function (itemsPromise, shouldUpdateCache) {
+            if (_.isUndefined(shouldUpdateCache)) {
+                shouldUpdateCache = true;
+            }
+            return itemsPromise.then(function (data) {
+                pager.pageNumber = data.pageNumber;
+                pager.localItems = data.items;
+                pager.total = data.totalNumberOfItems;
+                if (shouldUpdateCache) {
+                    updateCache(pager, pager.pageNumber, data.items);
+                }
+                return data;
+            });
+        };
+
+        // 0-based page number
+        // opts: An object containing:
+        //  forceCacheUpdate: true/false, whether or not to flush the cache
+        //  itemsPerPage: If specificed, request this many items for the page, instead of
+        //                using pager.itemsPerPage
+        pager.goToPage = function (n, opts) {
+            opts = opts || {};
+            var shouldUpdateCache = true;
+
+            // If the desired page number is currently cached, then just reuse
+            // our `localItems` cache, rather than going back to the API.
+            // By setting `updateCache` to false, it ensures that the current
+            // pager.cacheOffset and pager.cachedPages values stay the
+            // same
+            if (!opts.forceCacheUpdate && _.contains(pager.cachedPages, n)) {
+                shouldUpdateCache = false;
+                return pager.newItems($q.when({
+                    pageNumber: n,
+                    items: pager.localItems,
+                    totalNumberOfItems: pager.total
+                }), shouldUpdateCache);
+            }
+
+            var itemsPerPage = opts.itemsPerPage || pager.itemsPerPage;
+            return pager.newItems(updateItems(n, itemsPerPage), shouldUpdateCache);
+        };
+
+        // This tells the pager to go to the current page, but ensure no cached
+        // values are used. Can be used by page controllers when they want
+        // to force an update
+        pager.refresh = function (stayOnCurrentPage) {
+            var pageNumber = stayOnCurrentPage ? pager.currentPage() : 0;
+            return pager.goToPage(pageNumber, { forceCacheUpdate: true });
+        };
+
+        pager.isFirstPage = function () {
+            return pager.isPage(0);
+        };
+
+        pager.isLastPage = function () {
+            return pager.isPage(_.max([0, pager.totalPages - 1]));
+        };
+
+        pager.isPage = function (n) {
+            return pager.pageNumber === n;
+        };
+
+        pager.isPageNTheLastPage = function (n) {
+            return pager.totalPages - 1 === n;
+        };
+
+        pager.currentPage = function () {
+            return pager.pageNumber;
+        };
+
+        pager.goToFirstPage = function () {
+            pager.goToPage(0);
+        };
+
+        pager.goToLastPage = function () {
+            pager.goToPage(_.max([0, pager.totalPages - 1]));
+        };
+
+        pager.goToPrevPage = function () {
+            pager.goToPage(pager.currentPage() - 1);
+        };
+
+        pager.goToNextPage = function () {
+            pager.goToPage(pager.currentPage() + 1);
+        };
+
+        pager.isEmpty = function () {
+            return pager.total === 0;
+        };
+
+        pager.setItemsPerPage = function (numItems) {
+            var opts = {
+                forceCacheUpdate: true,
+                itemsPerPage: numItems
+            };
+            return pager.goToPage(0, opts).then(function (data) {
+                // Wait until we get the data back from the API before we
+                // update itemsPerPage. This ensures that we don't show
+                // a "weird" number of items in a table
+                pager.itemsPerPage = numItems;
+                // Now that we've "officially" changed the itemsPerPage,
+                // we have to update all the cache values
+                updateCache(pager, data.pageNumber, data.items);
+
+                // Persist this itemsPerPage as the new global value
+                if (pager.persistItemsPerPage) {
+                    PageTracking.userSelectedItemsPerPage(numItems);
+                }
+            });
+        };
+
+        pager.isItemsPerPage = function (numItems) {
+            return pager.itemsPerPage === numItems;
+        };
+
+        this.pager = pager;
+
+        pager.goToPage(pager.pageNumber);
+
+    }
+
+    return PageTracking;
+}]);
 
 angular.module('encore.ui.utilities')
 /**
- * @ngdoc service
- * @name utilities.service:Session
+ * @ngdoc filter
+ * @name utilities.filter:Page
  * @description
+ * This is the pagination filter that is used to limit the number of pages
+ * shown.
  *
- * Service for managing user session in encore-ui.
+ * @param {Object} pager The instance of the PageTracking service. If not
+ * specified, a new one will be created.
  *
- * @requires utilities.service:rxLocalStorage
- *
- * @example
- * <pre>
- * Session.getToken(); // Returns the stored token
- * Session.storeToken(token); // Stores token
- * Session.logout(); // Logs user off
- * Session.isCurrent(); // Returns true/false if the token has expired.
- * Session.isAuthenticated(); // Returns true/false if the user token is valid.
- * </pre>
+ * @returns {Array} The list of page numbers that will be displayed.
  */
-.factory('Session', ["rxLocalStorage", function (rxLocalStorage) {
-    var TOKEN_ID = 'encoreSessionToken';
-    var session = {};
-
-    /**
-    * Dot walks the token without throwing an error.
-    * If key exists, returns value otherwise returns undefined.
-    */
-    session.getByKey = function (key) {
-        var tokenValue,
-            token = session.getToken(),
-            keys = key ? key.split('.') : undefined;
-
-        if (_.isEmpty(token) || !keys) {
-            return;
+.filter('Page', ["PageTracking", function (PageTracking) {
+    return function (pager) {
+        if (!pager) {
+            pager = PageTracking.createInstance();
         }
 
-        tokenValue = _.reduce(keys, function (val, key) {
-            return val ? val[key] : undefined;
-        }, token);
+        var displayPages = [],
+            // the next four variables determine the number of pages to show ahead of and behind the current page
+            pagesToShow = pager.pagesToShow || 5,
+            pageDelta = (pagesToShow - 1) / 2,
+            pagesAhead = Math.ceil(pageDelta),
+            pagesBehind = Math.floor(pageDelta);
 
-        return tokenValue;
-    };
+        if (pager && pager.length !== 0) {
+                // determine starting page based on (current page - (1/2 of pagesToShow))
+            var pageStart = Math.max(Math.min(pager.pageNumber - pagesBehind, pager.totalPages - pagesToShow), 0),
 
-    session.getToken = function () {
-        return rxLocalStorage.getObject(TOKEN_ID);
-    };
+                // determine ending page based on (current page + (1/2 of pagesToShow))
+                pageEnd = Math.min(Math.max(pager.pageNumber + pagesAhead, pagesToShow - 1), pager.totalPages - 1);
 
-    session.getTokenId = function () {
-        return session.getByKey('access.token.id');
-    };
-
-    session.getUserId = function () {
-        return session.getByKey('access.user.id');
-    };
-
-    session.getUserName = function () {
-        return session.getByKey('access.user.name');
-    };
-
-    session.storeToken = function (token) {
-        rxLocalStorage.setObject(TOKEN_ID, token);
-    };
-
-    session.logout = function () {
-        rxLocalStorage.removeItem(TOKEN_ID);
-    };
-
-    session.isCurrent = function () {
-        var expireDate = session.getByKey('access.token.expires');
-
-        if (expireDate) {
-            return new Date(expireDate) > _.now();
+            for (pageStart; pageStart <= pageEnd; pageStart++) {
+                // create array of page indexes
+                displayPages.push(pageStart);
+            }
         }
 
-        return false;
+        return displayPages;
     };
-
-    session.isAuthenticated = function () {
-        var token = session.getToken();
-        return _.isEmpty(token) ? false : session.isCurrent();
-    };
-
-    return session;
 }]);
 
 /**
@@ -1859,6 +2802,21 @@ angular.module('encore.ui.elements')
 });
 
 angular.module('encore.ui.elements')
+.config(["$provide", function ($provide) {
+  $provide.decorator('rxActionMenuDirective', ["$delegate", function ($delegate) {
+    // https://github.com/angular/angular.js/issues/10149
+    _.each(['type', 'text'], function (key) {
+      $delegate[0].$$isolateBindings[key] = {
+        attrName: key,
+        mode: '@',
+        optional: true
+      };
+    });
+    return $delegate;
+  }]);
+}]);
+
+angular.module('encore.ui.elements')
 /**
  * @ngdoc directive
  * @name elements.directive:rxActionMenu
@@ -1923,21 +2881,6 @@ angular.module('encore.ui.elements')
             // https://github.com/angular-ui/bootstrap/blob/master/src/tooltip/tooltip.js
         }
     };
-}]);
-
-angular.module('encore.ui.elements')
-.config(["$provide", function ($provide) {
-  $provide.decorator('rxActionMenuDirective', ["$delegate", function ($delegate) {
-    // https://github.com/angular/angular.js/issues/10149
-    _.each(['type', 'text'], function (key) {
-      $delegate[0].$$isolateBindings[key] = {
-        attrName: key,
-        mode: '@',
-        optional: true
-      };
-    });
-    return $delegate;
-  }]);
 }]);
 
 /**
@@ -2257,6 +3200,691 @@ angular.module('encore.ui.rxPopover')
   return _.assign(ddo, {
     templateUrl: 'templates/rxPopover.html'
   });
+}]);
+
+/**
+ * @ngdoc overview
+ * @name rxPaginate
+ * @description
+ * # rxPaginate Component
+ *
+ * The rxPaginate component adds pagination to a table.
+ *
+ * Two different forms of pagination are supported:
+ *
+ * 1. UI-based pagination, where all items are retrieved at once, and paginated in the UI
+ * 2. Server-side pagination, where the pagination directive works with a paginated API
+ *
+ * # UI-Based Pagination
+ * With UI-Based pagination, the entire set of data is looped over via an `ngRepeat` in the table's
+ * `<tbody>`, with the data passed into the `Paginate` filter. This filter does the work of paginating
+ * the set of data and communicating with the `<rx-paginate>` to draw the page selection buttons at the
+ * bottom of the table.
+ *
+ * As shown in the first example below, the `ngRepeat` will usually look like this:
+ *
+ * <pre>
+ * <tr ng-repeat="server in servers |
+ *                orderBy: sorter.predicate:sorter.reverse |
+ *                Paginate:pager ">
+ * </pre>
+ *
+ * In this case,
+ *
+ * 1. `servers` is a variable bound to your page `$scope`, and contains the full set of servers.
+ * 2. This is then passed to `orderBy`, to perform column sorting with `rxSortableColumn`.
+ * 3. The sorted results are then passed to `Paginate:pager`, where `Paginate` is a filter from the
+ * `rxPaginate` module, and `pager` is a variable on your scope created like
+ * `$scope.pager = PageTracking.createInstance();`.
+ *
+ * This `pager` is responsible for tracking pagination state (i.e. "which page are we on", "how many
+ * items per page", "total number of items tracked", etc.
+ *
+ * To add the pagination buttons to your table, do the following in your `<tfoot>`:
+ * <pre>
+ * <tfoot>
+ *     <tr class="paginate-area">
+ *         <td colspan="2">
+ *             <rx-paginate page-tracking="pager"></rx-paginate>
+ *         </td>
+ *     </tr>
+ * </tfoot>
+ * </pre>
+ *
+ * Here we are using the `<rx-paginate>` directive to draw the buttons, passing it the same `pager`
+ * instance described above.
+ *
+ * Because all of the `servers` get passed via `ng-repeat`, it means you don't need to take explicit
+ * action if the set of data changes. You can change `$scope.servers` at any time, and `<rx-paginate>`
+ * will automatically re-process it.
+ *
+ * ## Persistence
+ *
+ * The user's preference for the number of items to display per page will be persisted across applications
+ * using {@link utilities.service:rxLocalStorage rxLocalStorage}. This preference is set whenever the user selects
+ * a new number to show.
+ *
+ * This applies to both UI-based pagination and API-based pagination.
+ *
+ * *NOTE*: If `itemsPerPage` is explicitly specified in the `opts` you pass to `PageTracking.createInstance()`,
+ * then that pager instance will load using the `itemsPerPage` you specified, and _not_ the globally persisted value.
+ *
+ * *NOTE*: If you don't want a specific pager to have its `itemsPerPage` persisted to other pagers,
+ * pass `persistItemsPerPage: false` with the `opts` to `createInstance()`.
+ *
+ * ## Hiding the pagination
+ *
+ * In some instances, the pagination should be hidden if there isn't enough data to require it. For example,
+ * if you have `itemsPerPage` set to 10, but only have 7 items of data (so only one page). Hiding the
+ * pagination is pretty simple:
+ *
+ * <pre>
+ * <rx-paginate page-tracking="pager" ng-hide="pager.totalPages === 1"></rx-paginate>
+ * </pre>
+ *
+ * You can use this code on any part of your view. For example, if you have pagination in your table
+ * footer, it's a good idea to hide the entire footer:
+ *
+ * <pre>
+ * <tfoot ng-hide="pager.totalPages === 1">
+ *     <tr class="paginate-area">
+ *         <td colspan="12">
+ *             <rx-paginate page-tracking="pager"></rx-paginate>
+ *         </td>
+ *     </tr>
+ * </tfoot>
+ * </pre>
+ *
+ * See the rxPaginate compoent {@link /encore-ui/#/components/rxPaginate demo} for more examples of this.
+ *
+ * This applies to both UI-based pagination and API-based pagination.
+ *
+ * # API-Based Pagination
+ * Many APIs support pagination on their own. Previously, we would have to grab _all_ the data at once,
+ * and use the UI-Based Pagination described above. Now we have support for paginated APIs, such that we
+ * only retrieve data for given pages when necessary.
+ *
+ * With API-based pagination, the `ngRepeat` for your table will instead look like this:
+ * <pre>
+ * <tr ng-repeat="server in pagedServers.items">
+ * </pre>
+ *
+ * Note a few things here:
+ *
+ * 1. We now loop over a variable provided by the pager.
+ * 2. We no longer pass the values through _any_ filters. Not a search text filter, not sorting filter,
+ * and not the `Paginate` filter.
+ *
+ * ** BEGIN WARNING **
+ *
+ * You should _never_ access `pagedServers.items` from anywhere other than the `ng-repeat`. Do not touch
+ * it in your controller. It is a dynamic value that can change at anytime. It is only intended for use
+ * by `ng-repeat`.
+ *
+ * ** END WARNING **
+ *
+ * The `<tfoot>` will look like this:
+ *
+ * <pre>
+ * <tfoot>
+ *     <tr class="paginate-area">
+ *         <td colspan="2">
+ *             <rx-paginate
+ *                 page-tracking="pagedServers"
+ *                 server-interface="serverInterface"
+ *                 filter-text="searchText"
+ *                 selections="selectFilter.selected"
+ *                 sort-column="sort.predicate"
+ *                 sort-direction="sort.reverse">
+ *             </rx-paginate>
+ *         </td>
+ *     </tr>
+ * </tfoot>
+ * </pre>
+ *
+ *  * `page-tracking` still receives the pager (`pagedServers` in this case) as an argument. What's
+ *  new are the next four parameters.
+ *  * `server-interface` _must_ be present. It has to be passed an object with a `getItems()` method
+ *  on it. This method is what `<rx-paginate>` will use to request data from the paginated API.
+ *  * `filter-text`, `selections`, `sort-column` and `sort-direction` are all optional. If present,
+ *  `<rx-paginate>` will watch the variables for changes, and will call `getItems()` for updates whenever
+ *  the values change.
+ *
+ * *Note:* If using `<rx-select-filter>` in the table, the `available` option passed to the `SelectFilter`
+ * constructor **must** be provided and include every property.  This is because the filter cannot reliably
+ * determine all available options from a paginated API.
+ *
+ * You will still create a `PageTracking` instance on your scope, just like in UI-based pagination:
+ *
+ * <pre>
+ * $scope.pagedServers = PageTracking.createInstance();
+ * </pre>
+ *
+ * ## getItems()
+ * The `getItems()` method is one you write on your own, and lives as an interface between `<rx-paginate>`
+ * and the server-side paginated API that you will be calling. The framework will make calls to `getItems()`
+ * when appropriate. Rather than have to teach `<rx-paginate>` about how to call and parse a multitude of
+ * different paginated APIs, it is your responsibility to implement this generic method.
+ *
+ * `getItems()` takes two required parameters, and one optional parameter object. When the framework calls it,
+ * it looks like:
+ *
+ * <pre>
+ * getItems(pageNumber, itemsPerPage, {
+ *     filterText: some_filter_search_text,
+ *     selections: selected_options_from_filters,
+ *     sortColumn: the_selected_sort_column,
+ *     sortDirection: the_direction_of_the_sort_column
+ * });
+ * </pre>
+ *
+ * where:
+ *
+ * * `pageNumber`: the 0-based page of data that the user has clicked on/requested
+ * * `itemsPerPage`: the value the user currently has selected for how many items per page they wish to see
+ * * `filterText`: the filter search string entered by the user, if any
+ * * `selections`: an object containing the item properties and their selected options
+ * * `sortColumn`: the name of the selected sort column, if any
+ * * `sortDirection`: either `'ASCENDING'` or `'DESCENDING'`
+ *
+ * When the framework calls `getItems()`, you **_must_ return a promise**. When this promise resolves,
+ * the resolved object must have the following properties on it:
+ *
+ * * `items`: An array containing the actual items/rows of the table returned for the request. This should at
+ * least contain `itemsPerPage` items, if that many items exist on the given page
+ * * `pageNumber`: The 0-based page number that these items belong to. Normally this should be the same as the
+ * `pageNumber` value passed to `getItems()`
+ * * `totalNumberOfItems`: The total number of items available, given the `filterText` parameter.
+ *
+ * Examples are below.
+ *
+ * ## `totalNumberOfItems`
+ *
+ * If you could get all items from the API in _one call_, `totalNumberOfItems` would reflect the number of items
+ * returned (given necessary search parameters). For example, say the following request was made:
+ *
+ * <pre>
+ * var pageNumber = 0;
+ * var itemsPerPage = 50;
+ *
+ * getItems(pageNumber, itemsPerPage);
+ * </pre>
+ *
+ * This is asking for all the items on page 0, with the user currently viewing 50 items per page. A valid response
+ * would return 50 items. However, the _total_ number of items available might be 1000 (i.e. 20 pages of results).
+ * Your response must then have `totalNumberOfItems: 1000`. This data is needed so we can display to the
+ * user "Showing 1-50 of 1000 items" in the footer of the table.
+ *
+ * If `filterText` is present, then the total number of items might change. Say the request became:
+ *
+ * <pre>
+ * var pageNumber = 0;
+ * var itemsPerPage = 50;
+ * var opts = {
+ *         filterText: "Ubuntu"
+ *     };
+ *
+ * getItems(pageNumber, itemsPerPage, opts);
+ * </pre>
+ *
+ * This means "Filter all your items by the search term 'Ubuntu', then return page 0".
+ * If the total number of items matching "Ubuntu" is 200, then your response would have
+ * `totalNumberOfItems: 200`. You might only return 50 items in `.items`, but the framework
+ * needs to know how many total items are available.
+ *
+ * ## Forcing a Refresh
+ *
+ * When using API-based pagination, there might be instances where you want to force a reload of
+ * the current items. For example, if the user takes an action to delete an item. Normally, the
+ * items in the view are only updated when the user clicks to change the page. To force a refresh, a
+ * `refresh()` method is available on the `pagedServers`. Calling this will tell `<rx-paginate>` to
+ * refresh itself. You can also pass it a `stayOnPage = true` to tell it to make a fresh request for
+ * the current page, i.e.:
+ * <pre>
+ * var stayOnPage = true;
+ * pagedServers.refresh(stayOnPage);
+ * </pre>
+ *
+ * Internally, calling `refresh()` equates to `<rx-paginate>` doing a new `getItems()` call, with
+ * the current filter/sort criteria. But the point is that you can't just call `getItems()` yourself
+ * to cause an update. The framework has to call that method, so it knows to wait on the returned promise.
+ *
+ * This is shown in the rxPaginate component {@link /encore-ui/#/components/rxPaginate demo} with a "Refresh" button
+ * above the API-paginated example.
+ *
+ * ## Error Handling
+ *
+ *
+ * `<rx-paginate>` includes a simple way to show error messages when `getItems()` rejects instead of
+ * resolves. By passing `error-message="Some error text!"` to `<rx-paginate>`, the string entered
+ * there will be shown in an rxNotification whenever `getItems()` fails. If `error-message` is
+ * not specified, then nothing will be shown on errors. In either case, on a failure, the table will
+ * stay on the page it was on before the request went out.
+ *
+ * If you wish to show more complicated error messages (and it is highly recommended that you do!),
+ * then you'll have to do that yourself. Either put error handling code directly into your `getItems()`,
+ * or have something else wait on the `getItems()` promise whenever it's called, and perform the handling there.
+ *
+ * One way to do this is as so:
+ *
+ * Let's say that you had defined your `getItems()` method on an object called `pageRequest`,
+ *
+ * <pre>
+ * var pageRequest = {
+ *         getItems: function (pageNumber, itemsPerPage, opts) {
+ *             var defer = $q.deferred();
+ *             ...
+ *         }
+ *     };
+ * </pre>
+ *
+ * You want your `getItems()` to be unaware of the UI, i.e. you don't want to mix API and UI logic into one method.
+ *
+ * Instead, you could do something like this:
+ *
+ * <pre>
+ * var pageRequest = {
+ *         getItemsFromAPI: function (pageNumber, itemsPerPage, opts) {
+ *             var defer = $q.deferred();
+ *                ...
+ *         }
+ *
+ *         getItems: function (pageNumber, itemsPerPage, opts) {
+ *             var promise = this.getItemsFromAPI(pageNumber, itemsPerPage, opts);
+ *
+ *             rxPromiseNotifications.add(promise, {
+ *                 error: 'Error loading page ' + pageNumber
+ *             }
+ *
+ *             return promise;
+ *         }
+ *     };
+ * </pre>
+ *
+ * Thus we've moved the API logic into `getItemsFromAPI`, and handled the UI logic separately.
+ *
+ * ## Extra Filtering Parameters
+ *
+ * By default, `<rx-paginate>` can automatically work with a search text field (using `search-text=`).
+ * If you need to filter by additional criteria (maybe some dropdowns/radiobox, extra filter boxes, etc),
+ * you'll need to do a bit more work on your own.
+ *
+ * To filter by some element X, set a `$watch` on X's model. Whenever it changes, call
+ * `pagedServers.refresh()` to force `<rx-paginate>` to do a new `getItems()` call. Then, in your
+ * `getItems()`, grab the current value of X and send it out along with the normal criteria that are passed
+ * into `getItems()`. Something like:
+ *
+ * <pre>
+ * $scope.watch('extraSearch', $scope.pagedServers.refresh);
+ *
+ * var serverInterface = {
+ *         getItems: function (pageNumber, itemsPerPage, opts) {
+ *             var extraSearch = $scope.extraSearch;
+ *             return callServerApi(pageNumber, itemsPerPage, opts, extraSearch);
+ *         }
+ *     };
+ *
+ *    ...
+ *
+ * <rx-paginate server-interface="serverInterface" ... ></rx-paginate>
+ * </pre>
+ *
+ * Remember that calling `refresh()` without arguments will tell `rx-paginate` to make a fresh request for
+ * page 0. If you call it with `true` as the first argument, the request will be made with whatever the current
+ * page is, i.e. `getItems(currentPage, ...)`. If you have your own search criteria, and they've changed since the
+ * last time this was called, note that the page number might now be different. i.e. If the user was on page 10,
+ * they entered some new filter text, and you call `refresh(true)`, there might not even be 10 pages of results
+ * with that filter applied.
+ *
+ * In general, if you call `refresh(true)`, you should check if _any_ of the filter criteria have changed since
+ * the last call. If they have, you should ask for page 0 from the server, not the page number passed in to
+ * `getItems()`. If you call `refresh()` without arguments, then you don't have to worry about comparing to the
+ * last-used filter criteria.
+ *
+ * ## Local Caching
+ *
+ * **If you are ok with a call to your API every time the user goes to a new page in the table, then you can ignore
+ * this section. If you want to reduce the total number of calls to your API, please read on.**
+ *
+ * When a `getItems()` request is made, the framework passes in the user's `itemsPerPage` value. If it is 50, and
+ * there are 50 results available for the requested page, then you should return _at least_ 50 results. However, you
+ * may also return _more_ than 50 items.
+ *
+ * Initially, `<rx-paginate>` will call `getItems()`, wait for a response, and then update items in the table.  If
+ * your `getItems()` returned exactly `itemsPerPage` results in its `items` array, and the user navigates to a
+ * different page of data, `getItems()` will be called again to fetch new information from the API.  The user will
+ * then need to wait before they see new data in the table. This remains true for every interaction with page data
+ * navigation.
+ *
+ * For example, say the following request is made when the page first loads:
+ *
+ * <pre>
+ * var pageNumber = 0;
+ * var itemsPerPage = 50;
+ *
+ * getItems(pageNumber, itemsPerPage);
+ * </pre>
+ *
+ * Because no data is available yet, `<rx-paginate>` will call `getItems()`, wait for the response, and then draw
+ * the items in the table. If you returned exactly 50 items, and the user then clicks "Next" or 2 (to go to the
+ * second page), then `getItems()` will have to be called again (`getItems(1, 50)`), and the user will have to wait
+ * for the results to come in.
+ *
+ * However, if your `getItems()` were to pull more than `itemsPerPage` of data from the API, `<rx-paginate>` is
+ * smart enough to navigate through the saved data without needing to make an API request every time the page is
+ * changed.
+ *
+ * There are some caveats, though.
+ *
+ * 1. Your returned `items.length` must be a multiple of `itemsPerPage` (if `itemsPerPage = 50`, `items.length`
+ * must be 50, 100, 150, etc.)
+ * 2. You will need to calculate the page number sent to the API based on requested values in the UI.
+ * 3. If the user enters any search text, and you've passed the search field to `<rx-paginate>` via `search-text`,
+ * then the cache will be immediately flushed and a new request made.
+ * 4. If you've turned on column-sorting, and passed `sort-column` to `<rx-paginate>`, then the cache will be
+ * flushed whenever the user changes the sort, and a new request will be made to `getItems()`
+ * 5. If you've passed `sort-direction` to `<rx-paginate>, and the user changes the sort
+ * direction, then the cache will be flushed and a new request will be made to `getItems()`
+ *
+ * Details on this are below.
+ *
+ * ### Local Caching Formula
+ *
+ * You have to be careful with grabbing more items than `itemsPerPage`, as you'll need to modify the values
+ * you send to your server. If you want to be careful, then **don't ever request more than `itemsPerPage`
+ * from your API.**
+ *
+ * Let's say that `itemsPerPage` is 50, but you want to grab 200 items at a time from the server, to reduce
+ * the round-trips to your API. We'll call this 200 the `serverItemsPerPage`. First, ensure that your
+ * `serverItemsPerPage` meets this requirement:
+ *
+ * <pre>
+ * (serverItemsPerPage >= itemsPerPage) && (serverItemsPerPage % itemsPerPage === 0)
+ * </pre>
+ *
+ * If you're asking for 200 items at a time, the page number on the server won't match the page number
+ * requested by the user. Before, a user call for `pageNumber = 4` and `itemsPerPage = 50` means
+ * "Give me items 200-249". But if you're telling your API that each page is 200 items long, then
+ * `pageNumber = 4` is not what you want to ask your API for (it would return items 800-999!). You'll need to
+ * send a custom page number to the server. In this case, you'd need `serverPageNumber` to be `1`, i.e.
+ * the second page of results from the server.
+ *
+ * We have written a utility function do these calculations for you, `rxPaginateUtils.calculateApiVals`. It
+ * returns an object with `serverPageNumber` and `offset` properties. To use it, your `getItems()` might
+ * look something like this.
+ *
+ * <pre>
+ * var getItems = function (pageNumber, itemsPerPage) {
+ *         var deferred = $q.defer();
+ *         var serverItemsPerPage = 200;
+ *         var vals = rxPaginateUtils.calculateApiVals(pageNumber, itemsPerPage, serverItemsPerPage);
+ *
+ *         yourRequestToAPI(vals.serverPageNumber, serverItemsPerPage)
+ *         .then(function (items) {
+ *             deferred.resolve({
+ *                 items: items.slice(vals.offset),
+ *                 pageNumber: pageNumber,
+ *                 totalNumberOfItems: items.totalNumberOfItems
+ *             });
+ *
+ *         });
+ *
+ *         return deferred.promise;
+ *     };
+ * </pre>
+ *
+ * The following tables should help illustrate what we mean with these conversions. In all three cases,
+ * there are a total of 120 items available from the API.
+ *
+ *
+ * | pageNumber | itemsPerPage | Items   | Action     | serverPageNumber | serverItemsPerPage | Items  |
+ * |------------|--------------|---------|------------|------------------|--------------------|--------|
+ * | 0          | 50           | 1-50    | getItems() | 0                | 50                 | 1-50   |
+ * | 1          | 50           | 51-100  | getItems() | 1                | 50                 | 51-100 |
+ * | 2          | 50           | 101-120 | getItems() | 2                | 50                 | 101-120|
+ *
+ *
+ * This first table is where you don't want to do any local caching. You send the `pageNumber` and
+ * `itemsPerPage` to your API, unchanged from what the user requested. Every time the user clicks to go to
+ * a new page, an API request will take place.
+ *
+ * ***
+ *
+ *
+ * |pageNumber   | itemsPerPage | Items   | Action     | serverPageNumber | serverItemsPerPage | Items |
+ * |-------------|--------------|---------|------------|------------------|--------------------|-------|
+ * | 0           | 50           | 1-50    | getItems() | 0                | 100                | 1-100 |
+ * | 1           | 50           | 51-100  | use cached |                  |                    |       |
+ * | 2           | 50           | 101-120 | getItems() | 1                | 100                |101-120|
+ *
+ *
+ * This second example shows the case where the user is still looking at 50 `itemsPerPage`, but you want to
+ * grab 100 items at a time from your API.
+ *
+ * When the table loads (i.e. the user wants to look at the first page of results), an "Action" of
+ * `getItems(0, 50)` will take place. Using `calculateApiVals`, the `serverPageNumber` will be 0 when you
+ * provide `serverItemsPerPage=100`. When you resolve the `getItems()` promise, you'll return items 1-100.
+ *
+ * When the user clicks on the second page (page 1), `getItems()` will not be called, `<rx-paginate>` will
+ * instead use the values it has cached.
+ *
+ * When the user clicks on the third page (page 2), `getItems(2, 50)` will be called. You'll use
+ * `rxPaginateutils.calculateApiVals` to calculate that `serverPageNumber` now needs to be `1`. Because
+ * only 120 items in total are available, you'll eventually resolve the promise with `items` containing
+ * items 101-120.
+ *
+ * ***
+ *
+ * | pageNumber | itemsPerPage | Items   | Action     | serverPageNumber | serverItemsPerPage | Items |
+ * |------------|--------------|---------|------------|------------------|--------------------|-------|
+ * | 0          | 50           | 1-50    | getItems() | 0                | 200                | 1-120 |
+ * | 1          | 50           | 51-100  | use cached |                  |                    |  &nbsp;     |
+ * | 2          | 50           | 101-120 | use cached |                  |                    |  &nbsp;     |
+ *
+ * In this final example, there are still only 120 items available, but you're asking your API for 200 items
+ * at a time. This will cause an API request on the first page, but the next two pages will be cached, and
+ * `<rx-paginate>` will use the cached values.
+ *
+ * ## Directives
+ * * {@link rxPaginate.directive:rxLoadingOverlay rxLoadingOverlay}
+ * * {@link rxPaginate.directive:rxPaginate rxPaginate}
+ */
+angular.module('encore.ui.rxPaginate', [
+    'encore.ui.utilities',
+    'debounce'
+]);
+
+angular.module('encore.ui.rxPaginate')
+/**
+ * @ngdoc directive
+ * @name rxPaginate.directive:rxPaginate
+ * @restrict E
+ * @description
+ * Directive that takes in the page tracking object and outputs a page
+ * switching controller. It can be used in conjunction with the Paginate
+ * filter for UI-based pagination, or can take an optional serverInterface
+ * object if you instead intend to use a paginated server-side API
+ *
+ * @param {Object} pageTracking This is the page tracking service instance to
+ * be used for this directive. See {@link utilities.service:PageTracking}
+ * @param {Number} numberOfPages This is the maximum number of pages that the
+ * page object will display at a time.
+ * @param {Object} [serverInterface] An object with a `getItems()` method. The requirements
+ * of this method are described in the rxPaginate module documentation
+ * @param {Object} [filterText] The model for the table filter input, if any. This directive
+ * will watch that model for changes, and request new results from the paginated API, on change
+ * @param {Object} [selections] The `selected` property of a SelectFilter instance, if one is being used.
+ * This directive will watch the filter's selections, and request new results from the paginated API, on change
+ * @param {Object} [sortColumn] The model containing the current column the results should sort on.
+ * This directive will watch that column for changes, and request new results from the paginated API, on change
+ * @param {Object} [sortDirection] The model containing the current direction of the current sort column. This
+ * directive will watch for changes, and request new results from the paginated API, on change
+ * @param {String} [errorMessage] An error message that should be displayed if a call to the request fails
+ */
+.directive('rxPaginate', ["$q", "$compile", "debounce", "PageTracking", "rxPromiseNotifications", function ($q, $compile, debounce, PageTracking, rxPromiseNotifications) {
+    return {
+        templateUrl: 'templates/rxPaginate.html',
+        replace: true,
+        restrict: 'E',
+        require: '?^rxLoadingOverlay',
+        scope: {
+            pageTracking: '=',
+            numberOfPages: '@',
+            serverInterface: '=?',
+            filterText: '=?',
+            selections: '=?',
+            sortColumn: '=?',
+            sortDirection: '=?'
+        },
+        link: function (scope, element, attrs, rxLoadingOverlayCtrl) {
+
+            var errorMessage = attrs.errorMessage;
+
+            rxLoadingOverlayCtrl = rxLoadingOverlayCtrl || {
+                show: _.noop,
+                hide: _.noop,
+                showAndHide: _.noop
+            };
+            // We need to find the `<table>` that contains
+            // this `<rx-paginate>`
+            var parentElement = element.parent();
+            while (parentElement.length && parentElement[0].tagName !== 'TABLE') {
+                parentElement = parentElement.parent();
+            }
+
+            var table = parentElement;
+
+            scope.scrollToTop = function () {
+                table[0].scrollIntoView(true);
+            };
+
+            // Everything here is restricted to using server-side pagination
+            if (!_.isUndefined(scope.serverInterface)) {
+
+                var params = function () {
+                    var direction = scope.sortDirection ? 'DESCENDING' : 'ASCENDING';
+                    return {
+                        filterText: scope.filterText,
+                        selections: scope.selections,
+                        sortColumn: scope.sortColumn,
+                        sortDirection: direction
+                    };
+                };
+
+                var getItems = function (pageNumber, itemsPerPage) {
+                    var response = scope.serverInterface.getItems(pageNumber,
+                                                   itemsPerPage,
+                                                   params());
+                    rxLoadingOverlayCtrl.showAndHide(response);
+
+                    if (errorMessage) {
+                        rxPromiseNotifications.add(response, {
+                            error: errorMessage
+                        });
+                    }
+                    return response;
+                };
+
+                // Register the getItems function with the PageTracker
+                scope.pageTracking.updateItemsFn(getItems);
+
+                var notifyPageTracking = function () {
+                    var pageNumber = 0;
+                    scope.pageTracking.newItems(getItems(pageNumber, scope.pageTracking.itemsPerPage));
+                };
+
+                // When someone changes the sort column, it will go to the
+                // default direction for that column. That could cause both
+                // `sortColumn` and `sortDirection` to get changed, and
+                // we don't want to cause two separate API requests to happen
+                var columnOrDirectionChange = debounce(notifyPageTracking, 100);
+
+                var textChange = debounce(notifyPageTracking, 500);
+
+                var selectionChange = debounce(notifyPageTracking, 1000);
+
+                var ifChanged = function (fn) {
+                    return function (newVal,  oldVal) {
+                        if (newVal !== oldVal) {
+                            fn();
+                        }
+                    };
+                };
+                // Whenever the filter text changes (modulo a debounce), tell
+                // the PageTracker that it should go grab new items
+                if (!_.isUndefined(scope.filterText)) {
+                    scope.$watch('filterText', ifChanged(textChange));
+                }
+
+                if (!_.isUndefined(scope.selections)) {
+                    scope.$watch('selections', ifChanged(selectionChange), true);
+                }
+
+                if (!_.isUndefined(scope.sortColumn)) {
+                    scope.$watch('sortColumn', ifChanged(columnOrDirectionChange));
+                }
+                if (!_.isUndefined(scope.sortDirection)) {
+                    scope.$watch('sortDirection', ifChanged(columnOrDirectionChange));
+                }
+
+                notifyPageTracking();
+
+            }
+
+        }
+    };
+}]);
+
+angular.module('encore.ui.rxPaginate')
+/**
+ * @ngdoc directive
+ * @name rxPaginate.directive:rxLoadingOverlay
+ * @restrict A
+ * @description
+ * This directive can be used to show and hide a "loading" overlay on top
+ * of any given element. Add this as an attribute to your element, and then
+ * other sibling or child elements can require this as a controller.
+ *
+ * @method show - Shows the overlay
+ * @method hide - Hides the overlay
+ * @method showAndHide(promise) - Shows the overlay, and automatically
+ * hides it when the given promise either resolves or rejects
+ */
+.directive('rxLoadingOverlay', ["$compile", function ($compile) {
+    var loadingBlockHTML = '<div ng-show="_rxLoadingOverlayVisible" class="loading-overlay">' +
+                                '<div class="loading-text-wrapper">' +
+                                    '<i class="fa fa-fw fa-lg fa-spin fa-circle-o-notch"></i>' +
+                                    '<div class="loading-text">Loading...</div>' +
+                                '</div>' +
+                            '</div>';
+
+    return {
+        restrict: 'A',
+        controller: ["$scope", function ($scope) {
+            this.show = function () {
+                $scope._rxLoadingOverlayVisible = true;
+            };
+
+            this.hide = function () {
+                $scope._rxLoadingOverlayVisible = false;
+            };
+
+            this.showAndHide = function (promise) {
+                this.show();
+                promise.finally(this.hide);
+            };
+        }],
+        link: function (scope, element) {
+            // This target element has to have `position: relative` otherwise the overlay
+            // will not sit on top of it
+            element.css({ position: 'relative' });
+            scope._rxLoadingOverlayVisible = false;
+
+            $compile(loadingBlockHTML)(scope, function (clone) {
+                element.append(clone);
+            });
+        }
+    };
 }]);
 
 angular.module('encore.ui.rxForm', ['encore.ui.utilities']);
@@ -4198,6 +5826,11 @@ angular.module('encore.bridge').run(['$templateCache', function($templateCache) 
     '        \n' +
     '        in after the `input` that we transclude, but before any other content we transclude\n' +
     '        --><div ng-if="description" class="field-description" ng-bind-html="description"></div></div></div>');
+}]);
+
+angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
+  $templateCache.put('templates/rxPaginate.html',
+    '<div class="rx-paginate"><div class="pagination" layout="row" layout-wrap layout-align="justify top"><div flex="50" flex-order="2" flex-gt-md="20" flex-order-gt-md="1" flex-gt-lg="35" layout="row"><a class="back-to-top" tabindex="0" ng-click="scrollToTop()">Back to top</a><div hide show-gt-lg>Showing {{ pageTracking | PaginatedItemsSummary}} items</div></div><div flex="100" flex-order="1" flex-gt-md="40" flex-order-gt-md="2" flex-gt-lg="35"><div class="page-links" layout="row" layout-align="center"><div ng-class="{disabled: pageTracking.isFirstPage()}" class="pagination-first"><a hide show-gt-lg ng-click="pageTracking.goToFirstPage()" ng-hide="pageTracking.isFirstPage()">First</a></div><div ng-class="{disabled: pageTracking.isFirstPage()}" class="pagination-prev"><a ng-click="pageTracking.goToPrevPage()" ng-hide="pageTracking.isFirstPage()">« Prev</a></div><div ng-repeat="n in pageTracking | Page" ng-class="{active: pageTracking.isPage(n), \'page-number-last\': pageTracking.isPageNTheLastPage(n)}" class="pagination-page"><a ng-click="pageTracking.goToPage(n)">{{n + 1}}</a></div><div ng-class="{disabled: pageTracking.isLastPage() || pageTracking.isEmpty()}" class="pagination-next"><a ng-click="pageTracking.goToNextPage()" ng-hide="pageTracking.isLastPage() || pageTracking.isEmpty()">Next »</a></div><div ng-class="{disabled: pageTracking.isLastPage()}" class="pagination-last"><a hide show-gt-lg ng-click="pageTracking.goToLastPage()" ng-hide="pageTracking.isLastPage()">Last</a></div></div></div><div flex="50" flex-order="3" flex-gt-md="40" flex-order-gt-md="3" flex-gt-lg="30"><div class="pagination-per-page" layout="row" layout-align="right"><div>Show</div><div ng-repeat="i in pageTracking.itemSizeList"><button ng-disabled="pageTracking.isItemsPerPage(i)" ng-click="pageTracking.setItemsPerPage(i)">{{ i }}</button></div></div></div></div></div>');
 }]);
 
 angular.module('encore.bridge').run(['$templateCache', function($templateCache) {
