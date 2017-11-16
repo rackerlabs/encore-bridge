@@ -2,46 +2,43 @@
   "submodule": "encore-ui/src",
   "modules": {
     "components": [
-      "layout",
-      "rxApp",
-      "rxCollapse",
-      "rxForm",
-      "rxPaginate",
+      "rxApp"
+    ],
+    "elements": [
+      "ActionMenu",
+      "Buttons",
+      "Collapse",
+      "FlexboxGrid",
+      "Forms",
+      "Metadata",
+      "Tags",
+      "Tooltips",
       "rxPopover",
       "rxRadio",
       "rxSortableColumn",
       "rxStatusColumn"
     ],
-    "elements": [
-      "ActionMenu",
-      "Buttons",
-      "Forms",
-      "Metadata",
-      "Tags",
-      "Tooltips"
-    ],
     "utilities": [
-      "Page",
-      "PageTracking",
-      "Paginate",
       "PaginatedItemsSummary",
       "rxAge",
       "rxDOMHelper",
       "rxLocalStorage",
       "rxNestedElement",
       "rxNotify",
+      "rxPager",
+      "rxPageTracker",
+      "rxPaginate",
       "rxPaginateUtils",
       "rxPromiseNotifications",
       "rxSortEmptyTop",
       "rxSortUtil",
-      "rxSortUtil",
       "rxStatusColumnIcons",
       "rxStatusMappings",
       "rxTimePickerUtil",
-      "Session",
-      "TokenInterceptor",
-      "UnauthorizedInterceptor",
-      "UtcOffsets"
+      "rxSession",
+      "rxTokenInterceptor",
+      "rxUnauthorizedInterceptor",
+      "rxUtcOffsets"
     ]
   }
 }
