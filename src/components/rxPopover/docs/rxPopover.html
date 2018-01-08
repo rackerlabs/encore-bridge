@@ -1,34 +1,11 @@
-<div>
-  <rx-popover>
-    <div class="rs-popover-body">
-      <form class="rs-form-horizontal rs-form-small">
-        <div class="rs-control-group">
-          <label class="rs-control-label">Label One</label>
-          <div class="rs-controls">
-            <input type="text" class="rs-input-medium">
-          </div>
-        </div>
-        <div class="rs-control-group">
-          <label class="rs-control-label">Label Two</label>
-          <div class="rs-controls">
-            <input type="text" class="rs-input-medium"> GB
-          </div>
-        </div>
-        <div class="rs-control-group">
-          <label class="rs-control-label">Label Three</label>
-          <div class="rs-controls">
-            <input type="text" class="rs-input-medium">
-            <select>
-              <option>One</option>
-              <option>Two</option>
-            </select>
-          </div>
-        </div>
-      </form>
-    </div>
-    <div class="rs-popover-footer rs-btn-group">
-      <div class="rs-btn rs-btn-primary">Save</div>
-      <div class="rs-btn rs-btn-link">Cancel</div>
-    </div>
-  </rx-popover>
+<div style="padding-left: 300px;">
+  <input rx-checkbox id="chkLeft" type="checkbox" ng-model="left">
+  <label for="chkLeft">Switch Sides</label>
+  <br>
+  <div rx-popover ng-class="{'left': left}">
+    <button class="button" rx-popover-trigger>click me</button>
+    <rx-popover-content>
+      <popover-demo></popover-demo>
+    </rx-popover-content>
+  </div>
 </div>

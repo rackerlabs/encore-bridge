@@ -112,14 +112,24 @@ angular.module('demoApp', [
 // TODO: remove when build system supports demo controller overrides
 .factory('rxNotify', function () {
   return {}
-});
-angular.module('demoApp')
+})
 .directive('alwaysInvalid', function () {
   return {
     require: 'ngModel',
     link: function (scope, el, attrs, ctrl) {
       ctrl.$setValidity('alwaysInvalid', false);
       ctrl.$setDirty();
+    }
+  };
+})
+.directive('popoverDemo', function () {
+  return {
+    require: '^^rxPopover',
+    templateUrl: 'popoverDemo.html',
+    link: function (scope, element, attrs, rxPopover) {
+      scope.close = function () {
+        rxPopover.close();
+      };
     }
   };
 });

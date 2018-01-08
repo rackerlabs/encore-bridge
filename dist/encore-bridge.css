@@ -2207,6 +2207,50 @@ div.pagination-last a {
   margin-left: 25px;
   color: #757575;
 }
+rx-popover,
+[rx-popover] {
+  display: inline-block;
+}
+rx-popover .action-list,
+[rx-popover] .action-list {
+  top: 2em;
+  left: -1em;
+  min-width: 300px;
+  padding: 1.25em;
+}
+rx-popover .action-list:before,
+[rx-popover] .action-list:before {
+  content: "\f0d8";
+  text-shadow: rgba(0, 0, 0, 0.35) 0px -1px 1px;
+  font-family: FontAwesome;
+  text-decoration: inherit;
+  color: #ffffff;
+  font-size: 24px;
+  display: block;
+  left: 1em;
+  position: absolute;
+  top: -15px;
+  width: 0;
+  z-index: 1;
+}
+rx-popover.left .action-list,
+[rx-popover].left .action-list {
+  left: auto;
+  right: -1em;
+}
+rx-popover.left .action-list:before,
+[rx-popover].left .action-list:before {
+  left: auto;
+  right: 1.5em;
+}
+rx-popover .action-buttons,
+[rx-popover] .action-buttons {
+  text-align: right;
+}
+rx-popover .action-buttons .button,
+[rx-popover] .action-buttons .button {
+  margin-bottom: 0;
+}
 .rxRadio .fake-radio {
   background-color: #16B9D4;
 }
@@ -3133,35 +3177,6 @@ rx-tags[disabled] .rx-tags:hover {
 .rx-tags .tag:focus .fa-times:hover {
   color: #ffffff;
 }
-rx-tooltip i {
-  color: #0E94A6;
-}
-rx-tooltip .tooltip {
-  left: -10px;
-}
-[rx-tooltip-anchor] {
-  display: inline-block;
-  position: relative;
-}
-rx-tooltip-content .tooltip.bottom {
-  display: none;
-}
-rx-tooltip-content .tooltip.bottom.in {
-  display: block;
-}
-rx-tooltip-content .tooltip.bottom .tooltip-arrow {
-  left: 18px;
-  border-bottom-color: #d8d8d8;
-}
-rx-tooltip-content .tooltip.bottom .tooltip-arrow:before {
-  border-bottom-color: #eeeeee;
-}
-rx-tooltip-content .tooltip.bottom .tooltip-inner {
-  background: #eeeeee;
-  color: #424242;
-  border: 1px solid #d8d8d8;
-  padding: 10px;
-}
 .tooltip {
   position: absolute;
   z-index: 1070;
@@ -3273,6 +3288,35 @@ rx-tooltip-content .tooltip.bottom .tooltip-inner {
 .tooltip.left .tooltip-arrow:before {
   left: -10px;
   border-left-color: #757575;
+}
+rx-tooltip i {
+  color: #0E94A6;
+}
+rx-tooltip .tooltip {
+  left: -10px;
+}
+[rx-tooltip-anchor] {
+  display: inline-block;
+  position: relative;
+}
+rx-tooltip-content .tooltip.bottom {
+  display: none;
+}
+rx-tooltip-content .tooltip.bottom.in {
+  display: block;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-arrow {
+  left: 18px;
+  border-bottom-color: #d8d8d8;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-arrow:before {
+  border-bottom-color: #eeeeee;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-inner {
+  background: #eeeeee;
+  color: #424242;
+  border: 1px solid #d8d8d8;
+  padding: 10px;
 }
 .rxStatusMappings-demo .demo-status-column-table {
   max-width: 500px;
