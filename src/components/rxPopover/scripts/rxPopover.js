@@ -1,7 +1,8 @@
 angular.module('encore.ui.rxPopover')
-.directive('rxPopover', function () {
+.directive('rxPopover', function ($document) {
     return {
         restrict: 'EA',
+        require: 'rxPopover',
         controller: function ($scope) {
             var displayed = false;
 
@@ -17,8 +18,23 @@ angular.module('encore.ui.rxPopover')
                 this.onChange(displayed);
             };
         },
-        link: function (scope, element, attrs) {
+        link: function (scope, element, attrs, rxPopover) {
             attrs.$addClass('action-menu-container');
+
+            if (_.has(attrs, 'globalDismiss')) {
+                function globalHandler (event) {
+                    scope.$apply(function () {
+                        if (!element[0].contains(event.target)) {
+                            rxPopover.close();
+                        }
+                    });
+                }
+
+                $document.on('click', globalHandler);
+                element.on('$destroy', function () {
+                    $document.off('click', globalHandler);
+                });
+            }
         }
     };
 })
