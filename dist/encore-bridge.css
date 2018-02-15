@@ -9632,3 +9632,6 @@ rx-popover .action-buttons .button,
 [rx-popover] .action-buttons .button {
   margin-bottom: 0;
 }
+.rxStatusMappings-demo .demo-status-column-table {
+  max-width: 500px;
+}

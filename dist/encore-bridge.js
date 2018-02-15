@@ -1,5 +1,2704 @@
 angular.module('encore.bridge', ['encore.ui.rxApp','encore.ui.utilities','encore.ui.elements']);
 
+angular.module('encore.ui.utilities', []);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc parameters
+ * @name utilities.constant:rxUtcOffsets
+ *
+ * @description
+ * List of known UTC Offset Values
+ * See https://en.wikipedia.org/wiki/List_of_UTC_time_offsets
+ *
+ * Utility service used by {@link elements.directive:rxTimePicker rxTimePicker}.
+ */
+.constant('rxUtcOffsets', [
+    '-12:00',
+    '-11:00',
+    '-10:00',
+    '-09:30',
+    '-09:00',
+    '-08:00',
+    '-07:00',
+    '-06:00',
+    '-05:00',
+    '-04:30',
+    '-04:00',
+    '-03:30',
+    '-03:00',
+    '-02:00',
+    '-01:00',
+    '+00:00',
+    '+01:00',
+    '+02:00',
+    '+03:00',
+    '+03:30',
+    '+04:00',
+    '+04:30',
+    '+05:00',
+    '+05:30',
+    '+05:45',
+    '+06:00',
+    '+06:30',
+    '+07:00',
+    '+08:00',
+    '+08:30',
+    '+08:45',
+    '+09:00',
+    '+09:30',
+    '+10:00',
+    '+10:30',
+    '+11:00',
+    '+12:00',
+    '+12:45',
+    '+13:00',
+    '+14:00',
+]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxUnauthorizedInterceptor
+ * @description
+ * Simple injector which will intercept HTTP responses. If a HTTP 401 response error code is returned,
+ * the ui redirects to `/login`.
+ *
+ * @requires $q
+ * @requires @window
+ * @requires utilities.service:rxSession
+ *
+ * @example
+ * <pre>
+ * angular.module('encoreApp', ['encore.ui'])
+ *     .config(function ($httpProvider) {
+ *         $httpProvider.interceptors.push('rxUnauthorizedInterceptor');
+ *     });
+ * </pre>
+ */
+.factory('rxUnauthorizedInterceptor', ["$q", "$window", "rxSession", function ($q, $window, rxSession) {
+    var svc = {
+        redirectPath: function () {
+            // This brings in the entire relative URI (including the path
+            // specified in a <base /> tag), along with query params as a
+            // string.
+            // e.g https://www.google.com/search?q=woody+wood+pecker
+            // window.location.pathname = /search?q=woody+wood+pecker
+            return $window.location.pathname;
+        },
+        redirect: function (loginPath) {
+            loginPath = loginPath ? loginPath : '/login?redirect=';
+            $window.location = loginPath + encodeURIComponent(svc.redirectPath());
+        },
+        responseError: function (response) {
+            if (response.status === 401) {
+                rxSession.logout(); // Logs out user by removing token
+                svc.redirect();
+            }
+
+            return $q.reject(response);
+        }
+    };
+
+    return svc;
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:$rxTooltip
+ * @description
+ * Utility service that creates tooltip- and popover-like directives as well as
+ * houses global options for them.
+ */
+.provider('$rxTooltip', function () {
+    // The default options tooltip and popover.
+    var defaultOptions = {
+        placement: 'top',
+        placementClassPrefix: '',
+        animation: true,
+        popupDelay: 0,
+        popupCloseDelay: 0,
+        useContentExp: false
+    };
+
+    // Default hide triggers for each show trigger
+    var triggerMap = {
+        'mouseenter': 'mouseleave',
+        'click': 'click',
+        'outsideClick': 'outsideClick',
+        'none': ''
+    };
+
+    // The options specified to the provider globally.
+    var globalOptions = {};
+
+    /**
+     * `options({})` allows global configuration of all tooltips in the
+     * application.
+     *
+     *   var app = angular.module( 'App', ['rxTooltip'], function( $rxTooltipProvider ) {
+     *     // place tooltips left instead of top by default
+     *     $rxTooltipProvider.options( { placement: 'left' } );
+     *   });
+     */
+    this.options = function (value) {
+        angular.extend(globalOptions, value);
+    };
+
+    /**
+     * This allows you to extend the set of trigger mappings available. E.g.:
+     *
+     *   $rxTooltipProvider.setTriggers( { 'openTrigger': 'closeTrigger' } );
+     */
+    this.setTriggers = function setTriggers (triggers) {
+        angular.extend(triggerMap, triggers);
+    };
+
+    /**
+     * This is a helper function for translating camel-case to snakeCase.
+     */
+    function snakeCase (name) {
+        var regexp = /[A-Z]/g;
+        var separator = '-';
+        return name.replace(regexp, function (letter, pos) {
+            return (pos ? separator : '') + letter.toLowerCase();
+        });
+    }
+
+    /**
+     * Returns the actual instance of the $rxTooltip service.
+     * TODO support multiple triggers
+     */
+    this.$get = ["$window", "$compile", "$timeout", "$document", "$rxPosition", "$interpolate", "$rootScope", "$parse", "rxStackedMap", function ($window, $compile, $timeout, $document, $rxPosition,
+    $interpolate, $rootScope, $parse, rxStackedMap) {
+        var openedTooltips = rxStackedMap.createNew();
+        $document.on('keyup', keypressListener);
+
+        $rootScope.$on('$destroy', function () {
+            $document.off('keyup', keypressListener);
+        });
+
+        function keypressListener (e) {
+            if (e.which === 27) {
+                var last = openedTooltips.top();
+                if (last) {
+                    last.value.close();
+                    last = null;
+                }
+            }
+        }
+
+        return function $rxTooltip (ttType, prefix, defaultTriggerShow, options) {
+            options = angular.extend({}, defaultOptions, globalOptions, options);
+
+            /**
+             * Returns an object of show and hide triggers.
+             *
+             * If a trigger is supplied,
+             * it is used to show the tooltip; otherwise, it will use the `trigger`
+             * option passed to the `$rxTooltipProvider.options` method; else it will
+             * default to the trigger supplied to this directive factory.
+             *
+             * The hide trigger is based on the show trigger. If the `trigger` option
+             * was passed to the `$rxTooltipProvider.options` method, it will use the
+             * mapped trigger from `triggerMap` or the passed trigger if the map is
+             * undefined; otherwise, it uses the `triggerMap` value of the show
+             * trigger; else it will just use the show trigger.
+             */
+            function getTriggers (trigger) {
+                var show = (trigger || options.trigger || defaultTriggerShow).split(' ');
+                var hide = show.map(function (trigger) {
+                    return triggerMap[trigger] || trigger;
+                });
+                return {
+                    show: show,
+                    hide: hide
+                };
+            }
+
+            var directiveName = snakeCase(ttType);
+
+            var startSym = $interpolate.startSymbol();
+            var endSym = $interpolate.endSymbol();
+            var template =
+                '<div ' + directiveName + '-popup ' +
+                  'rx-title="' + startSym + 'title' + endSym + '" ' +
+                  (options.useContentExp ?
+                    'content-exp="contentExp()" ' :
+                    'content="' + startSym + 'content' + endSym + '" ') +
+                  'origin-scope="origScope" ' +
+                  'class="rx-position-measure ' + prefix + '" ' +
+                  'tooltip-animation-class="fade"' +
+                  'rx-tooltip-classes ' +
+                  'ng-class="{ in: isOpen }" ' +
+                  '>' +
+                '</div>';
+
+            return {
+                compile: function () {
+                    var tooltipLinker = $compile(template);
+
+                    return function link (scope, element, attrs) {
+                        var tooltip;
+                        var tooltipLinkedScope;
+                        var transitionTimeout;
+                        var showTimeout;
+                        var hideTimeout;
+                        var positionTimeout;
+                        var adjustmentTimeout;
+                        var appendToBody = angular.isDefined(options.appendToBody) ? options.appendToBody : false;
+                        var triggers = getTriggers(undefined);
+                        var hasEnableExp = angular.isDefined(attrs[prefix + 'Enable']);
+                        var ttScope = scope.$new(true);
+                        var repositionScheduled = false;
+                        var isOpenParse = angular.isDefined(attrs[prefix + 'IsOpen']) ?
+                            $parse(attrs[prefix + 'IsOpen']) : false;
+                        var contentParse = options.useContentExp ? $parse(attrs[ttType]) : false;
+                        var observers = [];
+                        var lastPlacement;
+
+                        var positionTooltip = function () {
+                            // check if tooltip exists and is not empty
+                            if (!tooltip || !tooltip.html()) { return; }
+
+                            if (!positionTimeout) {
+                                positionTimeout = $timeout(function () {
+                                    var ttPosition = $rxPosition.positionElements
+                                        (element, tooltip, ttScope.placement, appendToBody);
+                                    var initialHeight = angular.isDefined
+                                        (tooltip.offsetHeight) ? tooltip.offsetHeight : tooltip.prop('offsetHeight');
+                                    var elementPos = appendToBody ? $rxPosition.offset
+                                        (element) : $rxPosition.position(element);
+                                    tooltip.css({ top: ttPosition.top + 'px', left: ttPosition.left + 'px' });
+                                    var placementClasses = ttPosition.placement.split('-');
+
+                                    if (!tooltip.hasClass(placementClasses[0])) {
+                                        tooltip.removeClass(lastPlacement.split('-')[0]);
+                                        tooltip.addClass(placementClasses[0]);
+                                    }
+
+                                    if (!tooltip.hasClass(options.placementClassPrefix + ttPosition.placement)) {
+                                        tooltip.removeClass(options.placementClassPrefix + lastPlacement);
+                                        tooltip.addClass(options.placementClassPrefix + ttPosition.placement);
+                                    }
+
+                                    adjustmentTimeout = $timeout(function () {
+                                        var currentHeight = angular.isDefined(tooltip.offsetHeight)
+                                            ? tooltip.offsetHeight : tooltip.prop('offsetHeight');
+                                        var adjustment = $rxPosition.adjustTop
+                                            (placementClasses, elementPos, initialHeight, currentHeight);
+                                        if (adjustment) {
+                                            tooltip.css(adjustment);
+                                        }
+                                        adjustmentTimeout = null;
+                                    }, 0, false);
+
+                                    // first time through tt element will have the
+                                    // rx-position-measure class or if the placement
+                                    // has changed we need to position the arrow.
+                                    if (tooltip.hasClass('rx-position-measure')) {
+                                        $rxPosition.positionArrow(tooltip, ttPosition.placement);
+                                        tooltip.removeClass('rx-position-measure');
+                                    } else if (lastPlacement !== ttPosition.placement) {
+                                        $rxPosition.positionArrow(tooltip, ttPosition.placement);
+                                    }
+                                    lastPlacement = ttPosition.placement;
+                                    positionTimeout = null;
+                                }, 0, false);
+                            }
+                        };
+
+                        // Set up the correct scope to allow transclusion later
+                        ttScope.origScope = scope;
+
+                        // By default, the tooltip is not open.
+                        // TODO add ability to start tooltip opened
+                        ttScope.isOpen = false;
+
+                        function toggleTooltipBind () {
+                            if (!ttScope.isOpen) {
+                                showTooltipBind();
+                            } else {
+                                hideTooltipBind();
+                            }
+                        }
+
+                        // Show the tooltip with delay if specified, otherwise show it immediately
+                        function showTooltipBind () {
+                            if (hasEnableExp && !scope.$eval(attrs[prefix + 'Enable'])) {
+                                return;
+                            }
+
+                            cancelHide();
+                            prepareTooltip();
+
+                            if (ttScope.popupDelay) {
+                                // Do nothing if the tooltip was already scheduled to pop-up.
+                                // This happens if show is triggered multiple times before any hide is triggered.
+                                if (!showTimeout) {
+                                    showTimeout = $timeout(show, ttScope.popupDelay, false);
+                                }
+                            } else {
+                                show();
+                            }
+                        }
+
+                        function hideTooltipBind () {
+                            cancelShow();
+
+                            if (ttScope.popupCloseDelay) {
+                                if (!hideTimeout) {
+                                    hideTimeout = $timeout(hide, ttScope.popupCloseDelay, false);
+                                }
+                            } else {
+                                hide();
+                            }
+                        }
+
+                        // Show the tooltip popup element.
+                        function show () {
+                            cancelShow();
+                            cancelHide();
+
+                            // Don't show empty tooltips.
+                            if (!ttScope.content) {
+                                return angular.noop;
+                            }
+
+                            createTooltip();
+
+                            // And show the tooltip.
+                            ttScope.$evalAsync(function () {
+                                ttScope.isOpen = true;
+                                assignIsOpen(true);
+                                positionTooltip();
+                            });
+                        }
+
+                        function cancelShow () {
+                            if (showTimeout) {
+                                $timeout.cancel(showTimeout);
+                                showTimeout = null;
+                            }
+
+                            if (positionTimeout) {
+                                $timeout.cancel(positionTimeout);
+                                positionTimeout = null;
+                            }
+                        }
+
+                        // Hide the tooltip popup element.
+                        function hide () {
+                            if (!ttScope) {
+                                return;
+                            }
+
+                            // First things first: we don't show it anymore.
+                            ttScope.$evalAsync(function () {
+                                if (ttScope) {
+                                    ttScope.isOpen = false;
+                                    assignIsOpen(false);
+                                    // And now we remove it from the DOM. However, if we have animation, we
+                                    // need to wait for it to expire beforehand.
+                                    // FIXME: this is a placeholder for a port of the transitions library.
+                                    // The fade transition in TWBS is 150ms.
+                                    if (ttScope.animation) {
+                                        if (!transitionTimeout) {
+                                            transitionTimeout = $timeout(removeTooltip, 150, false);
+                                        }
+                                    } else {
+                                        removeTooltip();
+                                    }
+                                }
+                            });
+                        }
+
+                        function cancelHide () {
+                            if (hideTimeout) {
+                                $timeout.cancel(hideTimeout);
+                                hideTimeout = null;
+                            }
+
+                            if (transitionTimeout) {
+                                $timeout.cancel(transitionTimeout);
+                                transitionTimeout = null;
+                            }
+                        }
+
+                        function createTooltip () {
+                            // There can only be one tooltip element per directive shown at once.
+                            if (tooltip) {
+                                return;
+                            }
+
+                            tooltipLinkedScope = ttScope.$new();
+                            tooltip = tooltipLinker(tooltipLinkedScope, function (tooltip) {
+                                if (appendToBody) {
+                                    $document.find('body').append(tooltip);
+                                } else {
+                                    element.after(tooltip);
+                                }
+                            });
+
+                            openedTooltips.add(ttScope, {
+                                close: hide
+                            });
+
+                            prepObservers();
+                        }
+
+                        function removeTooltip () {
+                            cancelShow();
+                            cancelHide();
+                            unregisterObservers();
+
+                            if (tooltip) {
+                                tooltip.remove();
+
+                                tooltip = null;
+                                if (adjustmentTimeout) {
+                                    $timeout.cancel(adjustmentTimeout);
+                                }
+                            }
+
+                            openedTooltips.remove(ttScope);
+
+                            if (tooltipLinkedScope) {
+                                tooltipLinkedScope.$destroy();
+                                tooltipLinkedScope = null;
+                            }
+                        }
+
+                        /**
+                         * Set the initial scope values. Once
+                         * the tooltip is created, the observers
+                         * will be added to keep things in sync.
+                         */
+                        function prepareTooltip () {
+                            ttScope.title = attrs[prefix + 'Title'];
+                            if (contentParse) {
+                                ttScope.content = contentParse(scope);
+                            } else {
+                                ttScope.content = attrs[ttType];
+                            }
+
+                            ttScope.popupClass = attrs[prefix + 'Class'];
+                            ttScope.placement = angular.isDefined(attrs[prefix + 'Placement']) ?
+                                attrs[prefix + 'Placement'] : options.placement;
+                            var placement = $rxPosition.parsePlacement(ttScope.placement);
+                            lastPlacement = placement[1] ? placement[0] + '-' + placement[1] : placement[0];
+
+                            var delay = parseInt(attrs[prefix + 'PopupDelay'], 10);
+                            var closeDelay = parseInt(attrs[prefix + 'PopupCloseDelay'], 10);
+                            ttScope.popupDelay = !isNaN(delay) ? delay : options.popupDelay;
+                            ttScope.popupCloseDelay = !isNaN(closeDelay) ? closeDelay : options.popupCloseDelay;
+                        }
+
+                        function assignIsOpen (isOpen) {
+                            if (isOpenParse && angular.isFunction(isOpenParse.assign)) {
+                                isOpenParse.assign(scope, isOpen);
+                            }
+                        }
+
+                        ttScope.contentExp = function () {
+                            return ttScope.content;
+                        };
+
+                        /**
+                         * Observe the relevant attributes.
+                         */
+                        attrs.$observe('disabled', function (val) {
+                            if (val) {
+                                cancelShow();
+                            }
+
+                            if (val && ttScope.isOpen) {
+                                hide();
+                            }
+                        });
+
+                        if (isOpenParse) {
+                            scope.$watch(isOpenParse, function (val) {
+                                if (ttScope && !val === ttScope.isOpen) {
+                                    toggleTooltipBind();
+                                }
+                            });
+                        }
+
+                        function prepObservers () {
+                            observers.length = 0;
+
+                            if (contentParse) {
+                                observers.push(
+                                    scope.$watch(contentParse, function (val) {
+                                        ttScope.content = val;
+                                        if (!val && ttScope.isOpen) {
+                                            hide();
+                                        }
+                                    })
+                                );
+
+                                observers.push(
+                                    tooltipLinkedScope.$watch(function () {
+                                        if (!repositionScheduled) {
+                                            repositionScheduled = true;
+                                            tooltipLinkedScope.$$postDigest(function () {
+                                                repositionScheduled = false;
+                                                if (ttScope && ttScope.isOpen) {
+                                                    positionTooltip();
+                                                }
+                                            });
+                                        }
+                                    })
+                                );
+                            } else {
+                                observers.push(
+                                    attrs.$observe(ttType, function (val) {
+                                        ttScope.content = val;
+                                        if (!val && ttScope.isOpen) {
+                                            hide();
+                                        } else {
+                                            positionTooltip();
+                                        }
+                                    })
+                                );
+                            }
+
+                            observers.push(
+                                attrs.$observe(prefix + 'Title', function (val) {
+                                    ttScope.title = val;
+                                    if (ttScope.isOpen) {
+                                        positionTooltip();
+                                    }
+                                })
+                            );
+
+                            observers.push(
+                                attrs.$observe(prefix + 'Placement', function (val) {
+                                    ttScope.placement = val ? val : options.placement;
+                                    if (ttScope.isOpen) {
+                                        positionTooltip();
+                                    }
+                                })
+                            );
+                        }
+
+                        function unregisterObservers () {
+                            if (observers.length) {
+                                angular.forEach(observers, function (observer) {
+                                    observer();
+                                });
+                                observers.length = 0;
+                            }
+                        }
+
+                        // hide tooltips/popovers for outsideClick trigger
+                        function bodyHideTooltipBind (e) {
+                            if (!ttScope || !ttScope.isOpen || !tooltip) {
+                                return;
+                            }
+                            // make sure the tooltip/popover link or tool tooltip/popover itself were not clicked
+                            if (!element[0].contains(e.target) && !tooltip[0].contains(e.target)) {
+                                hideTooltipBind();
+                            }
+                        }
+
+                        // KeyboardEvent handler to hide the tooltip on Escape key press
+                        function hideOnEscapeKey (e) {
+                            if (e.which === 27) {
+                                hideTooltipBind();
+                            }
+                        }
+
+                        var unregisterTriggers = function () {
+                            triggers.show.forEach(function (trigger) {
+                                if (trigger === 'outsideClick') {
+                                    element.off('click', toggleTooltipBind);
+                                } else {
+                                    element.off(trigger, showTooltipBind);
+                                    element.off(trigger, toggleTooltipBind);
+                                }
+                                element.off('keypress', hideOnEscapeKey);
+                            });
+                            triggers.hide.forEach(function (trigger) {
+                                if (trigger === 'outsideClick') {
+                                    $document.off('click', bodyHideTooltipBind);
+                                } else {
+                                    element.off(trigger, hideTooltipBind);
+                                }
+                            });
+                        };
+
+                        function prepTriggers () {
+                            var showTriggers = [], hideTriggers = [];
+                            var val = scope.$eval(attrs[prefix + 'Trigger']);
+                            unregisterTriggers();
+
+                            if (angular.isObject(val)) {
+                                Object.keys(val).forEach(function (key) {
+                                    showTriggers.push(key);
+                                    hideTriggers.push(val[key]);
+                                });
+                                triggers = {
+                                    show: showTriggers,
+                                    hide: hideTriggers
+                                };
+                            } else {
+                                triggers = getTriggers(val);
+                            }
+
+                            if (triggers.show !== 'none') {
+                                triggers.show.forEach(function (trigger, idx) {
+                                    if (trigger === 'outsideClick') {
+                                        element.on('click', toggleTooltipBind);
+                                        $document.on('click', bodyHideTooltipBind);
+                                    } else if (trigger === triggers.hide[idx]) {
+                                        element.on(trigger, toggleTooltipBind);
+                                    } else if (trigger) {
+                                        element.on(trigger, showTooltipBind);
+                                        element.on(triggers.hide[idx], hideTooltipBind);
+                                    }
+                                    element.on('keypress', hideOnEscapeKey);
+                                });
+                            }
+                        }
+
+                        prepTriggers();
+
+                        var animation = scope.$eval(attrs[prefix + 'Animation']);
+                        ttScope.animation = angular.isDefined(animation) ? !!animation : options.animation;
+
+                        var appendToBodyVal;
+                        var appendKey = prefix + 'AppendToBody';
+                        if (appendKey in attrs && attrs[appendKey] === undefined) {
+                            appendToBodyVal = true;
+                        } else {
+                            appendToBodyVal = scope.$eval(attrs[appendKey]);
+                        }
+
+                        appendToBody = angular.isDefined(appendToBodyVal) ? appendToBodyVal : appendToBody;
+
+                        // Make sure tooltip is destroyed and removed.
+                        scope.$on('$destroy', function onDestroyTooltip () {
+                            unregisterTriggers();
+                            removeTooltip();
+                            ttScope = null;
+                        });
+                    };
+                }
+            };
+        };
+    }];
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxTokenInterceptor
+ * @description
+ * Simple $http injector which will intercept http request and inject the
+ * Rackspace Identity's token into every http request.
+ *
+ * @requires utilities.service:rxSession
+ *
+ * @example
+ * <pre>
+ * angular.module('encoreApp', ['encore.ui'])
+ *     .config(function ($httpProvider) {
+ *         $httpProvider.interceptors.push('rxTokenInterceptor');
+ *     });
+ * </pre>
+ */
+.provider('rxTokenInterceptor', function () {
+    var exclusionList = this.exclusionList = [ 'rackcdn.com' ];
+
+    this.$get = ["rxSession", "$document", function (rxSession, $document) {
+        var url = $document[0].createElement('a');
+        return {
+            request: function (config) {
+                // Don't add the X-Auth-Token if the request URL matches
+                // something in exclusionList
+                // We're specifically looking at hostnames, so we have to
+                // do the `createElement('a')` trick to turn the config.url
+                // into something with a `.hostname`
+                url.href = config.url;
+                var exclude = _.some(exclusionList, function (item) {
+                    if (_.includes(url.hostname, item)) {
+                        return true;
+                    }
+                });
+
+                if (!exclude) {
+                    config.headers['X-Auth-Token'] = rxSession.getTokenId();
+                }
+
+                return config;
+            }
+        };
+    }];
+});
+
+(function () {
+    rxSessionFactory.$inject = ["rxLocalStorage"];
+    angular
+        .module('encore.ui.utilities')
+        .factory('rxSession', rxSessionFactory);
+
+    /**
+     * @ngdoc service
+     * @name utilities.service:rxSession
+     * @requires utilities.service:rxLocalStorage
+     * @description Session management and utility functions.
+     */
+    function rxSessionFactory (rxLocalStorage) {
+        var TOKEN_ID = 'encoreSessionToken';
+        var svc = {};
+
+        /**
+         * @ngdoc function
+         * @name rxSession.getByKey
+         * @methodOf utilities.service:rxSession
+         * @description Dot walks the token without throwing an error.
+         * If key exists, returns value otherwise returns undefined.
+         * @param {Function} key callback
+         * @returns {String} Key value
+         */
+        svc.getByKey = function (key) {
+            var tokenValue,
+                token = svc.getToken(),
+                keys = key ? key.split('.') : undefined;
+
+            if (_.isEmpty(token) || !keys) {
+                return;
+            }
+
+            tokenValue = _.reduce(keys, function (val, key) {
+                return val ? val[key] : undefined;
+            }, token);
+
+            return tokenValue;
+        };
+
+        /**
+         * @ngdoc function
+         * @name rxSession.getToken
+         * @methodOf utilities.service:rxSession
+         * @description If cached token exists, return value. Otherwise return undefined.
+         * @returns {String|Undefined} Token value
+         */
+        svc.getToken = function () {
+            return rxLocalStorage.getObject(TOKEN_ID);
+        };
+
+        /**
+         * @ngdoc function
+         * @name rxSession.getTokenId
+         * @methodOf utilities.service:rxSession
+         * @description If token ID exists, returns value otherwise returns undefined.
+         * @returns {String} Token ID
+         */
+        svc.getTokenId = function () {
+            return svc.getByKey('access.token.id');
+        };
+
+        /**
+         * @ngdoc function
+         * @name rxSession.getUserId
+         * @methodOf utilities.service:rxSession
+         * @description Gets user id
+         * @returns {String} User ID
+         */
+        svc.getUserId = function () {
+            return svc.getByKey('access.user.id');
+        };
+
+        /**
+         * @ngdoc function
+         * @name rxSession.getUserName
+         * @methodOf utilities.service:rxSession
+         * @description Gets user name
+         * @returns {String} User Name
+         */
+        svc.getUserName = function () {
+            return svc.getByKey('access.user.name');
+        };
+
+        /**
+         * @ngdoc function
+         * @name rxSession.storeToken
+         * @methodOf utilities.service:rxSession
+         * @description Stores token
+         * @param {Function} token callback
+         */
+        svc.storeToken = function (token) {
+            rxLocalStorage.setObject(TOKEN_ID, token);
+        };
+
+        /**
+         * @ngdoc function
+         * @name rxSession.logout
+         * @methodOf utilities.service:rxSession
+         * @description Logs user off
+         */
+        svc.logout = function () {
+            rxLocalStorage.removeItem(TOKEN_ID);
+        };
+
+        /**
+         * @ngdoc function
+         * @name rxSession.isCurrent
+         * @methodOf utilities.service:rxSession
+         * @description Checks if token is current/expired
+         * @returns {Boolean} True if expiration date is valid and older than current date
+         */
+        svc.isCurrent = function () {
+            var expireDate = svc.getByKey('access.token.expires');
+
+            if (expireDate) {
+                return new Date(expireDate) > _.now();
+            }
+
+            return false;
+        };
+
+        /**
+         * @ngdoc function
+         * @name rxSession.isAuthenticated
+         * @methodOf utilities.service:rxSession
+         * @description Authenticates whether token is defined or undefined
+         * @returns {Boolean} True if authenticated. Otherwise False.
+         */
+        svc.isAuthenticated = function () {
+            var token = svc.getToken();
+            return _.isEmpty(token) ? false : svc.isCurrent();
+        };
+
+        var cleanRoles = function (roles) {
+            return roles.split(',').map(function (r) {
+                return r.trim();
+            });
+        };
+
+        var userRoles = function () {
+            return _.map(svc.getRoles(), 'name');
+        };
+
+        /**
+         * @description Takes a function and a list of roles, and returns the
+         * result of calling that function with `roles`, and comparing to userRoles().
+         *
+         * @param {Function} fn Comparison function to use. _.some, _.every, etc.
+         * @param {String[]} roles List of desired roles
+         */
+        var checkRoles = function (roles, fn) {
+            // Some code expects to pass a comma-delimited string
+            // here, so turn that into an array
+            if (_.isString(roles)) {
+                roles = cleanRoles(roles);
+            }
+
+            var allUserRoles = userRoles();
+            return fn(roles, function (role) {
+                return _.includes(allUserRoles, role);
+            });
+        };
+
+        /**
+         * @ngdoc function
+         * @name rxSession.getRoles
+         * @methodOf utilities.service:rxSession
+         * @description Fetch all the roles tied to the user (in the exact format available in their auth token).
+         * @returns {Array} List of all roles associated to the user.
+         */
+        svc.getRoles = function () {
+            var token = svc.getToken();
+            return (token && token.access && token.access.user && token.access.user.roles) ?
+                token.access.user.roles : [];
+        };
+
+        /**
+         * @ngdoc function
+         * @name rxSession.hasRole
+         * @methodOf utilities.service:rxSession
+         * @description Check if user has at least _one_ of the given roles.
+         * @param {String[]} roles List of roles to check against
+         * @returns {Boolean} True if user has at least _one_ of the given roles; otherwise, false.
+         */
+        svc.hasRole = function (roles) {
+            return checkRoles(roles, _.some);
+        };
+
+        /**
+         * @ngdoc function
+         * @name rxSession.hasAllRoles
+         * @methodOf utilities.service:rxSession
+         * @description Checks if user has _every_ role in given list.
+         * @param {String[]} roles List of roles to check against
+         * @returns {Boolean} True if user has _every_ role in given list; otherwise, false.
+         */
+        svc.hasAllRoles = function (roles) {
+            return checkRoles(roles, _.every);
+        };
+
+        return svc;
+    }//rxSessionFactory();
+})();
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxTimePickerUtil
+ *
+ * @description
+ * Utility service used by {@link elements.directive:rxTimePicker rxTimePicker}.
+ */
+.factory('rxTimePickerUtil', function () {
+    /**
+     * @ngdoc property
+     * @propertyOf utilities.service:rxTimePickerUtil
+     * @name modelFormat
+     * @description formatting mask for Time model/data values
+     */
+    var modelFormat = 'HH:mmZ';
+
+    /**
+     * @ngdoc property
+     * @propertyOf utilities.service:rxTimePickerUtil
+     * @name viewFormat
+     * @description formatting mask for Time view/display values
+     */
+    var viewFormat = 'HH:mm (UTCZZ)';
+
+    /**
+     * @ngdoc method
+     * @methodOf utilities.service:rxTimePickerUtil
+     * @name parseUtcOffset
+     * @param {String} stringValue string containing UTC offset
+     * @return {String} UTC Offset value
+     *
+     * @description parse offset value from given string, if present
+     *
+     * **NOTE:** Logic in this function must match the logic in
+     * the page object.
+     */
+    function parseUtcOffset (stringValue) {
+        var regex = /([-+]\d{2}:?\d{2})/;
+        var matched = stringValue.match(regex);
+        return (matched ? matched[0] : '');
+    }//parseUtcOffset()
+
+    /**
+     * @ngdoc method
+     * @methodOf utilities.service:rxTimePickerUtil
+     * @name modelToObject
+     * @param {String} stringValue time in `HH:mmZ` format
+     * @return {Object} parsed data object
+     *
+     * @description
+     * Parse the model value to fetch hour, minutes, period, and offset
+     * to populate the picker form with appropriate values.
+     */
+    function modelToObject (stringValue) {
+        var momentValue = moment(stringValue, modelFormat);
+        var offset = parseUtcOffset(stringValue);
+        var parsed = {
+            hour: '',
+            minutes: '',
+            period: 'AM',
+            offset: (_.isEmpty(offset) ? '+0000' : offset)
+        };
+
+        if (!_.isEmpty(offset)) {
+            momentValue.utcOffset(offset);
+        }
+
+        if (momentValue.isValid()) {
+            parsed.hour = momentValue.format('h');
+            parsed.minutes = momentValue.format('mm');
+            parsed.period = momentValue.format('A');
+        }
+
+        return parsed;
+    }//modelToObject()
+
+    return {
+        parseUtcOffset: parseUtcOffset,
+        modelToObject: modelToObject,
+        modelFormat: modelFormat,
+        viewFormat: viewFormat,
+    };
+});//rxTimePickerUtil
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxStatusMappings
+ * @description
+ *
+ * A set of methods for creating mappings between a product's notion
+ * of statuses, and the status identifiers used in EncoreUI
+ *
+ * To accommodate different statuses, the `rxStatusMappings` factory includes
+ * methods for defining mappings from your own statuses to the six defined ones.
+ * The basic methods for this are `rxStatusMappings.addGlobal()` and
+ * `rxStatusMappings.addAPI()`.
+ *
+ * ## mapToActive()/mapToWarning()/mapToError()/mapToInfo()/mapToPending()
+ *
+ * While `.addGlobal()` and `.addAPI()` would be sufficient on their own,
+ * they can be slightly cumbersome. If you have a list of statuses that all
+ * need to get mapped to the same EncoreUI status, the mapping object will
+ * be forced to have repetition, leaving room for errors. For example,
+ * something like this:
+ *
+ * <pre>
+ * rxStatusMappings.addGlobal({
+ *     'BLOCKED': 'ERROR',
+ *     'SHUTDOWN': 'ERROR',
+ *     'FAILED': 'ERROR'
+ * });
+ * </pre>
+ *
+ * There is required repetition of `"ERROR"` in each pair, and there's always
+ * the chance of misspelling `"ERROR"`. Instead, we provide a utility method
+ * `mapToError` to help with this:
+ *
+ * <pre>
+ * rxStatusMappings.mapToError(['BLOCKED', 'SHUTDOWN', 'FAILED']);
+ * </pre>
+ *
+ * This has the advantage that it's shorter to type, eliminates the chance of
+ * mistyping or misassigning `"ERROR"`, and keeps all `"ERROR"` mappings
+ * physically grouped. With this, you could easily keep your mapping values
+ * in an Angular `.value` or `.constant`, and just pass them to these methods
+ * in your `.run()` method.
+ *
+ * There are equivalent `mapToWarning`, `mapToActive`, `mapToDisabled`,
+ * `mapToPending` and `mapToInfo` methods.
+ *
+ * All six of these methods can take an array or a single string as the first
+ * argument. The call above is equivalent to this group of individual calls:
+ *
+ * <pre>
+ * rxStatusMappings.mapToError('BLOCKED');
+ * rxStatusMappings.mapToError('SHUTDOWN');
+ * rxStatusMappings.mapToError('FAILED');
+ * </pre>
+ *
+ * All six can also take `api` as a second, optional parameter. Thus we could
+ * define the `rxStatusMappings.addAPI({ 'FOO': 'ERROR' }, 'z')` example from
+ * above as:
+ *
+ * <pre>
+ * rxStatusMappings.mapToError('FOO', 'z');
+ * </pre>
+ *
+ */
+.factory('rxStatusMappings', function () {
+    var globalMappings = {};
+    var apiMappings = {};
+    var rxStatusMappings = {};
+
+    var upperCaseCallback = function (objectValue, sourceValue) {
+        return sourceValue.toUpperCase();
+    };
+    /**
+     * @ngdoc function
+     * @name rxStatusMappings.addGlobal
+     * @methodOf utilities.service:rxStatusMappings
+     * @description
+     *
+     * Takes a full set of mappings to be used globally
+     *
+     * `rxStatusMappings.addGlobal()` takes an object as an argument, with the
+     * keys being your own product's statuses, and the values being one of the six
+     * internal statuses that it should map to. For example:
+     *
+     * <pre>
+     * rxStatusMappings.addGlobal({
+     *     'RUNNING': 'ACTIVE',
+     *     'STANDBY': 'INFO',
+     *     'SUSPENDED': 'WARNING',
+     *     'FAILURE': 'ERROR'
+     * });
+     * </pre>
+     *
+     * These mappings will be used throughout all instances of `rx-status-column`
+     * in your code.
+     *
+     * @param {String} mapping This is mapping with keys and values
+     */
+    rxStatusMappings.addGlobal = function (mapping) {
+        _.assignInWith(globalMappings, mapping, upperCaseCallback);
+    };
+
+    /**
+     * @ngdoc function
+     * @name rxStatusMappings.addAPI
+     * @methodOf utilities.service:rxStatusMappings
+     * @description
+     *
+     * Create a mapping specific to a particular API. This will
+     * only be used when the directive receives the `api="..."`
+     * attribute
+     *
+     * Say that you are using three APIs in your product, `X`, `Y` and `Z`. Both
+     * `X` and `Y` define a status `"FOO"`, which you want to map to EncoreUI's
+     * `"WARNING"`. You can declare this  mapping with
+     * `rxStatusMappings.addGlobal({ 'FOO': 'WARNING' })`. But your API `Z` also
+     * returns a `"FOO"` status, which you need mapped to EncoreUI's
+     * `"ERROR"` status.
+     *
+     * You _could_ do a transformation in your product to convert the `"FOO"`
+     * from `Z` into something else, or you can make use of
+     * `rxStatusMappings.addAPI()`, as follows:
+     *
+     * <pre>
+     * rxStatusMappings.addAPI('z', { 'FOO': 'ERROR' });
+     * </pre>
+     *
+     * Then in your template code, you would use `rx-status-column` as:
+     *
+     * <pre>
+     * <td rx-status-column status="{{ status }}" api="z"></td>
+     * </pre>
+     *
+     * This will tell EncoreUI that it should first check if the passed in
+     * `status` was defined separately for an api `"z"`, and if so, to use that
+     * mapping. If `status` can't be found in the mappings defined for `"z"`,
+     * then it will fall back to the mappings you defined in your `.addGlobal()`
+     * call.
+     *
+     * @param {String} apiName This is api name of the mapping
+     * @param {String} mapping This is mapping with keys and values
+     */
+    rxStatusMappings.addAPI = function (apiName, mapping) {
+        var api = apiMappings[apiName] || {};
+        _.assignInWith(api, mapping, upperCaseCallback);
+        apiMappings[apiName] = api;
+    };
+
+    var buildMapFunc = function (mapToString) {
+        return function (statusString, api) {
+            var obj = {};
+            if (_.isString(statusString)) {
+                obj[statusString] = mapToString;
+            } else if (_.isArray(statusString)) {
+                _.each(statusString, function (str) {
+                    obj[str] = mapToString;
+                });
+            }
+
+            if (api) {
+                rxStatusMappings.addAPI(api, obj);
+            } else {
+                rxStatusMappings.addGlobal(obj);
+            }
+        };
+    };
+
+    // All four of these map a string, or an array of strings,
+    // to the corresponding internal status (Active/Warning/Error/Info)
+    // Each can optionally take a string as the second parameter, indictating
+    // which api the mapping belongs to
+    rxStatusMappings.mapToActive = buildMapFunc('ACTIVE');
+    rxStatusMappings.mapToWarning = buildMapFunc('WARNING');
+    rxStatusMappings.mapToError = buildMapFunc('ERROR');
+    rxStatusMappings.mapToInfo = buildMapFunc('INFO');
+    rxStatusMappings.mapToPending = buildMapFunc('PENDING');
+    rxStatusMappings.mapToDisabled = buildMapFunc('DISABLED');
+
+    /**
+     * @ngdoc function
+     * @name rxStatusMappings.getInternalMapping
+     * @methodOf utilities.service:rxStatusMappings
+     * @description
+     *
+     * `rxStatusMappings` defines a `getInternalMapping(statusString, api)` method,
+     * which the framework uses to map a provided `status` string based on the
+     * mapping rules from all the methods above. It's intended for internal use,
+     * but there's nothing stopping you from using it if you find a need.
+     *
+     * If you ask it to map a string that is not registered for a mapping, it will
+     * return back that same string.
+     *
+     * @param {String} statusString This is status string based on mapping rules
+     * @param {String} api This is an api based on mapping rules
+     */
+    rxStatusMappings.getInternalMapping = function (statusString, api) {
+        if (_.has(apiMappings, api) && _.has(apiMappings[api], statusString)) {
+            return apiMappings[api][statusString];
+        }
+
+        var mapped = globalMappings[statusString];
+
+        return mapped ? mapped : statusString;
+    };
+
+    return rxStatusMappings;
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc object
+ * @name utilities.object:rxStatusColumnIcons
+ * @description
+ *
+ * Mapping of internal statuses to FontAwesome icons.
+ * The keys map to the names defined in rxStatusColumn.less
+ */
+.value('rxStatusColumnIcons', {
+    'ERROR': 'fa-ban',
+    'WARNING': 'fa-exclamation-triangle',
+    'INFO': 'fa-info-circle',
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxSortUtil
+ * @description
+ * Service which provided utility methods for sorting collections.
+ *
+ * @example
+ * <pre>
+ * rxSortUtil.getDefault() // returns a sort object with name as the default.
+ * rxSortUtil.sortCol($scope, 'name') // sorts the collection based on the predicate
+ * </pre>
+ */
+.factory('rxSortUtil', function () {
+    var util = {};
+
+    util.getDefault = function (property, reversed) {
+        return { predicate: property, reverse: reversed };
+    };
+
+    util.sortCol = function ($scope, predicate) {
+        var reverse = ($scope.sort.predicate === predicate) ? !$scope.sort.reverse : false;
+        $scope.sort = { reverse: reverse, predicate: predicate };
+
+        // This execution should be moved outside of the scope for rxSortUtil
+        // already rxSortUtil.sortCol has to be wrapped, and can be implemented there
+        // rather than have rxSortUtil.sortCol check/expect for a pager to be present.
+        if ($scope.pager) {
+            $scope.pager.pageNumber = 0;
+        }
+    };
+
+    return util;
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc filter
+ * @name utilities.filter:rxSortEmptyTop
+ * @description
+ *
+ * Filter that moves rows with an empty predicate to the top of the column in
+ * ascending order, and to the bottom in descending order.
+ *
+ * @example
+ * ### Empty Sort
+ * <pre>
+ * var emptySort = [
+ *     { name: { firstName: 'Adam' } },
+ *     { }
+ * ];
+ * emptySort | rxSortEmptyTop 'name.firstName':false
+ * </pre>
+ * Will sort as [{}, { name: { firstName: 'Adam' } }].
+ *
+ * ### Null Sort
+ * <pre>
+ * var nullSort = [
+ *     { name: { firstName: 'Adam' } },
+ *     { name: { firstName: null }
+ * ];
+ * nullSort | rxSortEmptyTop 'name.firstName':true
+ * </pre>
+ * Will sort as [{ name: { firstName: 'Adam' } }, {}]
+ */
+.filter('rxSortEmptyTop', ["$filter", "$parse", function ($filter, $parse) {
+    return function (array, key, reverse) {
+
+        var predicateGetter = $parse(key);
+
+        var sortFn = function (item) {
+            return predicateGetter(item) || '';
+        };
+
+        return $filter('orderBy')(array, sortFn, reverse);
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxPromiseNotifications
+ * @description Manages displaying messages for a promise.
+ *
+ * It is a common pattern with API requests that you show a loading message when an action is requested, followed
+ * by either a _success_ or _failure_ message depending on the result of the call.  `rxPromiseNotifications` is the
+ * service created for this pattern.
+ *
+ * @example
+ * <pre>
+ * rxPromiseNotifications.add($scope.deferred.promise, {
+ *     loading: 'Loading Message',
+ *     success: 'Success Message',
+ *     error: 'Error Message'
+ * });
+ * </pre>
+ */
+.factory('rxPromiseNotifications', ["rxNotify", "$rootScope", "$q", "$interpolate", function (rxNotify, $rootScope, $q, $interpolate) {
+    var scope = $rootScope.$new();
+
+    /**
+     * Removes 'loading' message from stack
+     * @private
+     * @this Scope used for storing messages data
+     */
+    var dismissLoading = function () {
+        if (this.loadingMsg) {
+            rxNotify.dismiss(this.loadingMsg);
+        }
+    };
+
+    /**
+     * Shows either a success or error message
+     * @private
+     * @this Scope used for storing messages data
+     * @param {String} msgType Message type to be displayed
+     * @param {Object} response Data that's returned from the promise
+     */
+    var showMessage = function (msgType, response) {
+        if (msgType in this.msgs && !this.isCancelled) {
+            // convert any bound properties into a string based on obj from result
+            var exp = $interpolate(this.msgs[msgType]);
+            var msg = exp(response);
+
+            var msgOpts = {
+                type: msgType
+            };
+
+            // if a custom stack is passed in, specify that for the message options
+            if (this.stack) {
+                msgOpts.stack = this.stack;
+            }
+
+            rxNotify.add(msg, msgOpts);
+        }
+    };
+
+    /**
+     * Cancels all messages from displaying
+     * @private
+     * @this Scope used for storing messages data
+     */
+    var cancelMessages = function () {
+        this.isCancelled = true;
+        this.deferred.reject();
+    };
+
+    /**
+     * @name add
+     * @ngdoc method
+     * @methodOf utilities.service:rxPromiseNotifications
+     * @description
+     * @param {Object} promise
+     * The promise to attach to for showing success/error messages
+     * @param {Object} msgs
+     * The messages to display. Can take in HTML/expressions
+     * @param {String} msgs.loading
+     * Loading message to show while promise is unresolved
+     * @param {String=} msgs.success
+     * Success message to show on successful promise resolve
+     * @param {String=} msgs.error
+     * Error message to show on promise rejection
+     * @param {String=} [stack='page']
+     * What stack to add to
+     */
+    var add = function (promise, msgs, stack) {
+        var deferred = $q.defer();
+
+        var uid = _.uniqueId('promise_');
+
+        scope[uid] = {
+            isCancelled: false,
+            msgs: msgs,
+            stack: stack
+        };
+
+        // add loading message to page
+        var loadingOpts = {
+            loading: true
+        };
+
+        if (stack) {
+            loadingOpts.stack = stack;
+        }
+
+        if (msgs.loading) {
+            scope[uid].loadingMsg = rxNotify.add(msgs.loading, loadingOpts);
+        }
+
+        // bind promise to show message actions
+        deferred.promise
+            .then(showMessage.bind(scope[uid], 'success'), showMessage.bind(scope[uid], 'error'))
+            .finally(dismissLoading.bind(scope[uid]));
+
+        // react based on promise passed in
+        promise.then(function (response) {
+            deferred.resolve(response);
+        }, function (reason) {
+            deferred.reject(reason);
+        });
+
+        // if page change, cancel everything
+        $rootScope.$on('$routeChangeStart', cancelMessages.bind(scope[uid]));
+
+        // attach deferred to scope for later access
+        scope[uid].deferred = deferred;
+
+        return scope[uid];
+    };
+
+    return {
+        add: add
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxPaginateUtils
+ * @description
+ * A few utilities to calculate first, last, and number of items.
+ */
+.factory('rxPaginateUtils', function () {
+    var rxPaginateUtils = {};
+
+    rxPaginateUtils.firstAndLast = function (pageNumber, itemsPerPage, totalNumItems) {
+        var first = pageNumber * itemsPerPage;
+        var added = first + itemsPerPage;
+        var last = (added > totalNumItems) ? totalNumItems : added;
+
+        return {
+            first: first,
+            last: last,
+        };
+
+    };
+
+    // Given the user requested pageNumber and itemsPerPage, and the number of items we'll
+    // ask a paginated API for (serverItemsPerPage), calculate what page number the API
+    // should be asked for, how and far of an offset to use to slice into the returned items.
+    // It is expected that authors of getItems() functions will use this, and do the slice themselves
+    // before resolving getItems()
+    rxPaginateUtils.calculateApiVals = function (pageNumber, itemsPerPage, serverItemsPerPage) {
+        var serverPageNumber = Math.floor(pageNumber * itemsPerPage / serverItemsPerPage);
+        var offset = pageNumber * itemsPerPage - serverItemsPerPage * serverPageNumber;
+
+        return {
+            serverPageNumber: serverPageNumber,
+            offset: offset
+        };
+    };
+
+    return rxPaginateUtils;
+});
+
+(function () {
+    rxPaginateFilter.$inject = ["rxPageTracker", "rxPaginateUtils"];
+    angular
+        .module('encore.ui.utilities')
+        .filter('rxPaginate', rxPaginateFilter);
+
+    /**
+     * @ngdoc filter
+     * @name utilities.filter:rxPaginate
+     * @description
+     * This is the pagination filter that is used to calculate the division in the
+     * items list for the paging.
+     *
+     * @param {Object} items The list of items that are to be sliced into pages
+     * @param {Object} pager The instance of the rxPageTracker service. If not
+     * specified, a new one will be created.
+     *
+     * @returns {Object} The list of items for the current page in the rxPageTracker object
+     */
+    function rxPaginateFilter (rxPageTracker, rxPaginateUtils) {
+        return function (items, pager) {
+            if (!pager) {
+                pager = rxPageTracker.createInstance();
+            }
+            if (pager.showAll) {
+                pager.total = items.length;
+                return items;
+            }
+            if (items) {
+
+                pager.total = items.length;
+                // We were previously on the last page, but enough items were deleted
+                // to reduce the total number of pages. We should now jump to whatever the
+                // new last page is
+                // When loading items over the network, our first few times through here
+                // will have totalPages===0. We do the _.max to ensure that
+                // we never set pageNumber to -1
+                if (pager.pageNumber + 1 > pager.totalPages) {
+                    if (!pager.isLastPage()) {
+                        pager.goToLastPage();
+                    }
+                }
+                var firstLast = rxPaginateUtils.firstAndLast(pager.currentPage(), pager.itemsPerPage, items.length);
+                return items.slice(firstLast.first, firstLast.last);
+            }
+        };
+    }//rxPaginateFilter
+})();
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc filter
+ * @name utilities.filter:PaginatedItemsSummary
+ * @requires $interpolate
+ * @description
+ * Given an active pager (i.e. the result of rxPageTracker.createInstance()),
+ * return a string like "26-50 of 500", when on the second page of a list of
+ * 500 items, where we are displaying 25 items per page
+ *
+ * @param {Object} pager The instance of the rxPageTracker service.
+ *
+ * @returns {String} The list of page numbers that will be displayed.
+ */
+.filter('PaginatedItemsSummary', ["rxPaginateUtils", "$interpolate", function (rxPaginateUtils, $interpolate) {
+    return function (pager) {
+        var template = '{{first}}-{{last}} of {{total}}';
+        if (pager.showAll || pager.itemsPerPage > pager.total) {
+            template = '{{total}}';
+        }
+        var firstAndLast = rxPaginateUtils.firstAndLast(pager.currentPage(), pager.itemsPerPage, pager.total);
+        return $interpolate(template)({
+            first: firstAndLast.first + 1,
+            last: firstAndLast.last,
+            total: pager.total
+        });
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxPageTracker
+ * @description
+ * This is the data service that can be used in conjunction with the pagination
+ * objects to store/control page display of data tables and other items.
+ * This is intended to be used with {@link elements.directive:rxPaginate}
+ * @namespace rxPageTracker
+ *
+ * @example
+ * <pre>
+ * $scope.pager = rxPageTracker.createInstance({showAll: true, itemsPerPage: 15});
+ * </pre>
+ * <pre>
+ * <rx-paginate page-tracking="pager"></rx-paginate>
+ * </pre>
+ */
+.factory('rxPageTracker', ["$q", "rxLocalStorage", "rxPaginateUtils", function ($q, rxLocalStorage, rxPaginateUtils) {
+    var rxPageTracker = {
+        /**
+         * @ngdoc method
+         * @name utilities.service:rxPageTracker#createInstance
+         * @methodOf utilities.service:rxPageTracker
+         * @param {Object=} options Configuration options for the pager
+         * @param {Number=} [options.itemsPerPage=200]
+         * The default number of items to display per page. If you choose a
+         * value that is not in the default set to itemsPerPage options
+         * (50, 200, 350, 500), then that value will be inserted into that
+         * list in the appropriate place
+         * @param {Number[]=} [options.itemSizeList=(50, 200, 350, 500)]
+         * The "items per page" options to give to the user. As these same
+         * values are used all throughout Encore, you probably should not alter
+         * them for your table.
+         * @param {Boolean=} [options.persistItemsPerPage=true]
+         * Whether or not a change to this pager's itemsPerPage should be
+         * persisted globally to all other pagers
+         * @param {Number=} [options.pagesToShow=5]
+         * This is the number of page numbers to show in the pagination controls
+         * @param {Boolean=} [options.showAll=false]
+         * This is used to determine whether or not to use the pagination. If
+         * `true`, then all items will be displayed, i.e. pagination will not
+         * be used
+         *
+         * @description This is used to generate the instance of the
+         * rxPageTracker object. It takes an optional `options` object,
+         * allowing you to customize the default pager behaviour.
+         *
+         * @return {Object} A new pager instance to be passed to the
+         * `page-tracking` attribute of `<rx-paginate>`
+         * (see {@link rxPaginate.directive:rxPaginate})
+         */
+        createInstance: function (options) {
+            options = options ? options : {};
+            var tracking = new rxPageTrackerObject(options);
+            return tracking.pager;
+        },
+
+        /*
+        * @method userSelectedItemsPerPage This method sets a new global itemsPerPage value
+        */
+        userSelectedItemsPerPage: function (itemsPerPage) {
+            rxLocalStorage.setItem('rxItemsPerPage', itemsPerPage);
+        }
+    };
+
+    function rxPageTrackerObject (opts) {
+        var pager = _.defaults(_.cloneDeep(opts), {
+            itemsPerPage: 200,
+            persistItemsPerPage: true,
+            pagesToShow: 5,
+            pageNumber: 0,
+            pageInit: false,
+            total: 0,
+            showAll: false,
+            itemSizeList: [50, 200, 350, 500]
+        });
+
+        // This holds all the items we've received. For UI pagination,
+        // this will be the entire set. For API pagination, this will be
+        // whatever chunk of data the API decided to send us
+        pager.localItems = [];
+
+        var itemsPerPage = pager.itemsPerPage;
+        var itemSizeList = pager.itemSizeList;
+
+        // If itemSizeList doesn't contain the desired itemsPerPage,
+        // then find the right spot in itemSizeList and insert the
+        // itemsPerPage value
+        if (!_.includes(itemSizeList, itemsPerPage)) {
+            var index = _.sortedIndex(itemSizeList, itemsPerPage);
+            itemSizeList.splice(index, 0, itemsPerPage);
+        }
+
+        var selectedItemsPerPage = parseInt(rxLocalStorage.getItem('rxItemsPerPage'));
+
+        // If the user has chosen a desired itemsPerPage, make sure we're respecting that
+        // However, a value specified in the options will take precedence
+        if (!opts.itemsPerPage && !_.isNaN(selectedItemsPerPage) && _.includes(itemSizeList, selectedItemsPerPage)) {
+            pager.itemsPerPage = selectedItemsPerPage;
+        }
+
+        Object.defineProperties(pager, {
+            'items': {
+                // This returns the slice of data for whatever current page the user is on.
+                // It is used for server-side pagination.
+                get: function () {
+                    var info = rxPaginateUtils.firstAndLast(pager.pageNumber, pager.itemsPerPage, pager.total);
+                    return pager.localItems.slice(info.first - pager.cacheOffset, info.last - pager.cacheOffset);
+                }
+            },
+
+            'totalPages': {
+                get: function () { return Math.ceil(pager.total / pager.itemsPerPage); }
+            }
+        });
+
+        function updateCache (pager, pageNumber, localItems) {
+            var numberOfPages = Math.floor(localItems.length / pager.itemsPerPage);
+            var cachedPages = numberOfPages ? _.range(pageNumber, pageNumber + numberOfPages) : [pageNumber];
+            pager.cachedPages = !_.isEmpty(cachedPages) ? cachedPages : [pageNumber];
+            pager.cacheOffset = pager.cachedPages[0] * pager.itemsPerPage;
+        }
+
+        updateCache(pager, 0, pager.localItems);
+
+        var updateItems = function (pageNumber) {
+            // This is the function that gets used when doing UI pagination,
+            // thus we're not waiting for the pageNumber to come back from a service,
+            // so we should set it right away. We can also return an empty items list,
+            // because for UI pagination, the items themselves come in through the Pagination
+            // filter
+            pager.pageNumber = pageNumber;
+            var data = {
+                items: [],
+                pageNumber: pageNumber,
+                totalNumberOfItems: pager.total
+            };
+            return $q.when(data);
+        };
+        pager.updateItemsFn = function (fn) {
+            updateItems = fn;
+        };
+
+        // Used by rxPaginate to tell the pager that it should grab
+        // new items from itemsPromise, where itemsPromise is the promise
+        // returned by a product's getItems() method.
+        // Set shouldUpdateCache to false if the pager should not update its cache with these values
+        pager.newItems = function (itemsPromise, shouldUpdateCache) {
+            if (_.isUndefined(shouldUpdateCache)) {
+                shouldUpdateCache = true;
+            }
+            return itemsPromise.then(function (data) {
+                pager.pageNumber = data.pageNumber;
+                pager.localItems = data.items;
+                pager.total = data.totalNumberOfItems;
+                if (shouldUpdateCache) {
+                    updateCache(pager, pager.pageNumber, data.items);
+                }
+                return data;
+            });
+        };
+
+        // 0-based page number
+        // opts: An object containing:
+        //  forceCacheUpdate: true/false, whether or not to flush the cache
+        //  itemsPerPage: If specificed, request this many items for the page, instead of
+        //                using pager.itemsPerPage
+        pager.goToPage = function (n, opts) {
+            opts = opts || {};
+            var shouldUpdateCache = true;
+
+            // If the desired page number is currently cached, then just reuse
+            // our `localItems` cache, rather than going back to the API.
+            // By setting `updateCache` to false, it ensures that the current
+            // pager.cacheOffset and pager.cachedPages values stay the
+            // same
+            if (!opts.forceCacheUpdate && _.includes(pager.cachedPages, n)) {
+                shouldUpdateCache = false;
+                return pager.newItems($q.when({
+                    pageNumber: n,
+                    items: pager.localItems,
+                    totalNumberOfItems: pager.total
+                }), shouldUpdateCache);
+            }
+
+            var itemsPerPage = opts.itemsPerPage || pager.itemsPerPage;
+            return pager.newItems(updateItems(n, itemsPerPage), shouldUpdateCache);
+        };
+
+        // This tells the pager to go to the current page, but ensure no cached
+        // values are used. Can be used by page controllers when they want
+        // to force an update
+        pager.refresh = function (stayOnCurrentPage) {
+            var pageNumber = stayOnCurrentPage ? pager.currentPage() : 0;
+            return pager.goToPage(pageNumber, { forceCacheUpdate: true });
+        };
+
+        pager.isFirstPage = function () {
+            return pager.isPage(0);
+        };
+
+        pager.isLastPage = function () {
+            return pager.isPage(_.max([0, pager.totalPages - 1]));
+        };
+
+        pager.isPage = function (n) {
+            return pager.pageNumber === n;
+        };
+
+        pager.isPageNTheLastPage = function (n) {
+            return pager.totalPages - 1 === n;
+        };
+
+        pager.currentPage = function () {
+            return pager.pageNumber;
+        };
+
+        pager.goToFirstPage = function () {
+            pager.goToPage(0);
+        };
+
+        pager.goToLastPage = function () {
+            pager.goToPage(_.max([0, pager.totalPages - 1]));
+        };
+
+        pager.goToPrevPage = function () {
+            pager.goToPage(pager.currentPage() - 1);
+        };
+
+        pager.goToNextPage = function () {
+            pager.goToPage(pager.currentPage() + 1);
+        };
+
+        pager.isEmpty = function () {
+            return pager.total === 0;
+        };
+
+        pager.setItemsPerPage = function (numItems) {
+            var opts = {
+                forceCacheUpdate: true,
+                itemsPerPage: numItems
+            };
+            return pager.goToPage(0, opts).then(function (data) {
+                // Wait until we get the data back from the API before we
+                // update itemsPerPage. This ensures that we don't show
+                // a "weird" number of items in a table
+                pager.itemsPerPage = numItems;
+                // Now that we've "officially" changed the itemsPerPage,
+                // we have to update all the cache values
+                updateCache(pager, data.pageNumber, data.items);
+
+                // Persist this itemsPerPage as the new global value
+                if (pager.persistItemsPerPage) {
+                    rxPageTracker.userSelectedItemsPerPage(numItems);
+                }
+            });
+        };
+
+        pager.isItemsPerPage = function (numItems) {
+            return pager.itemsPerPage === numItems;
+        };
+
+        this.pager = pager;
+
+        pager.goToPage(pager.pageNumber);
+
+    }
+
+    return rxPageTracker;
+}]);
+
+(function () {
+    rxPagerFilter.$inject = ["rxPageTracker"];
+    angular
+        .module('encore.ui.utilities')
+        .filter('rxPager', rxPagerFilter);
+
+    /**
+     * @ngdoc filter
+     * @name utilities.filter:rxPager
+     * @description
+     * This is the pagination filter that is used to limit the number of pages
+     * shown.
+     *
+     * @param {Object} pager The instance of the rxPageTracker service. If not
+     * specified, a new one will be created.
+     *
+     * @returns {Array} The list of page numbers that will be displayed.
+     */
+    function rxPagerFilter (rxPageTracker) {
+        return function (pager) {
+            if (!pager) {
+                pager = rxPageTracker.createInstance();
+            }
+
+            var displayPages = [],
+                // the next four variables determine the number of pages to show ahead of and behind the current page
+                pagesToShow = pager.pagesToShow || 5,
+                pageDelta = (pagesToShow - 1) / 2,
+                pagesAhead = Math.ceil(pageDelta),
+                pagesBehind = Math.floor(pageDelta);
+
+            if (pager && pager.length !== 0) {
+                // determine starting page based on (current page - (1/2 of pagesToShow))
+                var pageStart = Math.max(Math.min(pager.pageNumber - pagesBehind, pager.totalPages - pagesToShow), 0),
+
+                    // determine ending page based on (current page + (1/2 of pagesToShow))
+                    pageEnd = Math.min(Math.max(pager.pageNumber + pagesAhead, pagesToShow - 1), pager.totalPages - 1);
+
+                for (pageStart; pageStart <= pageEnd; pageStart++) {
+                    // create array of page indexes
+                    displayPages.push(pageStart);
+                }
+            }
+
+            return displayPages;
+        };
+    }//rxPagerFilter
+})();
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxNotify
+ * @description
+ * Manages page messages for an application.
+ *
+ * ## rxNotify
+ * The rxNotify component provides status message notifications on a page.
+ *
+ * There may be situations where you will need to use the styling/markup of
+ * rxNotify's messaging queue in status messages of your own - for example,
+ * a modal window which asks if you want to delete an object, with the
+ * appropriate warning or error flags. If this is the case, we recommend using
+ * the {@link elements.directive:rxNotification rxNotification} directive in your views.  Please note, this
+ * differs from {@link elements.directive:rxNotifications rxNotifications} (plural).
+ *
+ * The type attribute can be any type supported by `options.type` for the `rxNotify.add()` function in
+ * the {@link utilities.service:rxNotify rxNotify} service.
+ *
+ * ## Directives
+ * * {@link elements.directive:rxNotification rxNotification}
+ * * {@link elements.directive:rxNotifications rxNotifications}
+ *
+ * # Use Cases
+ *
+ * ## Add Notification in Loading State
+ * <pre>
+ * rxNotify.add('Loading', {
+ *     loading: true,
+ *     dismiss: [$scope, 'loaded']
+ * });
+ * var apiCallback = function (data) {
+ *     $scope.loaded = true;
+ *     // do something with the data
+ * };
+ * </pre>
+ *
+ * ## Show Notification on Variable Change
+ * <pre>
+ * $scope.loaded = false;
+ * rxNotify.add('Content Loaded', {
+ *     show: [$scope, 'loaded']
+ * });
+ * $timeout(function () {
+ *     $scope.loaded = true;
+ * }, 1500);
+ * </pre>
+ *
+ * ## Dismiss Notification on Variable Change
+ * <pre>
+ * $scope.loaded = false;
+ * rxNotify.add('Content Loaded', {
+ *     dismiss: [$scope, 'loaded']
+ * });
+ * $timeout(function () {
+ *     $scope.loaded = true;
+ * }, 1500);
+ * </pre>
+ *
+ *
+ * ## Using a Custom Stack
+ * Say you want to create a stack for a login form.
+ * Let's call the stack 'loginForm' to reference in our code.
+ *
+ * **Controller**
+ * <pre>
+ * rxNotify.add('Username required', {
+ *     type: 'error',
+ *     stack: 'loginForm'
+ * });
+ * </pre>
+ *
+ * **View**
+ * <pre>
+ * <rx-notifications stack="loginForm"></rx-notifications>
+ * </pre>
+ *
+ * # Stacks
+ *
+ * Stacks are just separate notification areas. Normally, all messages created will go to the `page` stack, which
+ * should be displayed at the top of the page. The `page` stack is used for page-level messages.
+ *
+ * ## Using the Page Stack
+ *
+ * The default notification stack is added by default to the `rxPage` template (see {@link rxApp}), so it should be
+ * ready to use without any work (unless your app uses a custom template).  The
+ * {@link elements.directive:rxNotifications rxNotifications} directive will gather all notifications for a particular
+ * stack into a single point on the page.  By default, this directive will collect all notifications in the `page`
+ * stack.
+ *
+ * <pre>
+ * <rx-notifications></rx-notifications>
+ * </pre>
+ *
+ * See {@link elements.directive:rxNotification rxNotification} for more details.
+ *
+ * ## Using a Custom Stack
+ *
+ * You can also create custom stacks for specific notification areas. Say you have a form on your page that you want to
+ * add error messages to. You can create a custom stack for this form and send form-specific messages to it.
+ *
+ * Please see the *Custom Stack* usage example in the Notifications [demo](../#/elements/Notifications).
+ *
+ * ## Adding an `rxNotification` to the Default Stack
+ *
+ * If you need to add a notification via your Angular template, just set the `stack` parameter on the opening
+ * `<rx-notification>` tag.  This will allow the notification to be added via the `rxNotify.add()` function.
+ *
+ * <pre>
+ * <rx-notification type="error" stack="page">
+ *   This is an error message being added to the "page" stack with <strong>Custom</strong> html.
+ * </rx-notification>
+ * </pre>
+ *
+ * ## Adding a New Message Queue via `rxNotify`
+ *
+ * To add a new message to a stack, inject `rxNotify` into your Angular function and run:
+ *
+ * <pre>
+ * rxNotify.add('My Message Text');
+ * </pre>
+ *
+ * This will add a new message to the default stack (`page`) with all default options set.  To customize options, pass
+ * in an `object` as the second argument with your specific options set:
+ *
+ * <pre>
+ * rxNotify.add('My Message Text', {
+ *   stack: 'custom',
+ *   type: 'warning'
+ * });
+ * </pre>
+ *
+ * ## Dismissing a message programatically
+ *
+ * Most messages are dismissed either by the user, a route change or using the custom `dismiss` property.  If you need
+ * to dismiss a message programmaticaly, you can run `rxNotify.dismiss(message)`, where *message* is the `object`
+ * returned from `rxNotify.add()`.
+ *
+ * ## Clearing all messages in a stack
+ *
+ * You can clear all messages in a specific stack programmatically via the `rxNotify.clear()` function. Simply pass in
+ * the name of the stack to clear:
+ *
+ * <pre>
+ * rxNotify.clear('page');
+ * </pre>
+ *
+ */
+.service('rxNotify', ["$interval", "$rootScope", function ($interval, $rootScope) {
+    var defaultStack = 'page';
+    var stacks = {};
+
+    // initialize a default stack
+    stacks[defaultStack] = [];
+
+    // array that contains messages to show on 'next' (when route changes)
+    var nextQueue = [];
+
+    var messageDefaults = {
+        type: 'info',
+        timeout: -1,
+        loading: false,
+        show: 'immediate',
+        dismiss: 'next',
+        ondismiss: _.noop,
+        stack: 'page',
+        repeat: true
+    };
+
+    /**
+     * @function
+     * @private
+     * @description Adds a message to a stack
+     *
+     * @param {Object} message The message object to add.
+     */
+    var addToStack = function (message) {
+        // if repeat is false, check to see if the message is already in the stack
+        if (!message.repeat) {
+            if (_.find(stacks[message.stack], { text: message.text, type: message.type })) {
+                return;
+            }
+        }
+
+        // if timeout is set, we should remove message after time expires
+        if (message.timeout > -1) {
+            dismissAfterTimeout(message);
+        }
+
+        // make sure there's actual text to add
+        if (message.text.length > 0) {
+            stacks[message.stack].push(message);
+        }
+    };//addToStack
+
+    /**
+     * @function
+     * @private
+     * @description
+     * Sets a timeout to wait a specific time then dismiss message
+     *
+     * @param {Object} message The message object to remove.
+     */
+    function dismissAfterTimeout (message) {
+        // convert seconds to milliseconds
+        var timeoutMs = message.timeout * 1000;
+
+        $interval(function () {
+            dismiss(message);
+        }, timeoutMs, 1);
+    }
+
+    /**
+     * @function
+     * @private
+     * @description
+     * Shows/dismisses message after scope.prop change to true
+     *
+     * @param {Object} message The message object to show/dismiss
+     * @param {String} changeType Whether to 'show' or 'dismiss' the message
+     */
+    var changeOnWatch = function (message, changeType) {
+        var scope = message[changeType][0];
+        var prop = message[changeType][1];
+
+        // function to run to change message visibility
+        var cb;
+
+        // switch which function to call based on type
+        if (changeType === 'show') {
+            cb = addToStack;
+        } else if (changeType === 'dismiss') {
+            cb = dismiss;
+
+            // add a listener to dismiss message if scope is destroyed
+            scope.$on('$destroy', function () {
+                dismiss(message);
+            });
+        }
+
+        scope.$watch(prop, function (newVal) {
+            if (newVal === true) {
+                cb(message);
+            }
+        });
+    };//changeOnWatch
+
+    /**
+     * @function
+     * @private
+     * @description removes all messages that are shown
+     */
+    var clearAllShown = function () {
+        _.forOwn(stacks, function (index, key) {
+            stacks[key] = _.reject(stacks[key], {
+                'dismiss': messageDefaults.dismiss
+            });
+        });
+    };
+
+    /**
+     * @function
+     * @private
+     * @description adds messages marked as 'next' to relevant queues
+     */
+    var addAllNext = function () {
+        _.each(nextQueue, function (message) {
+            // add to appropriate stack
+            addToStack(message);
+        });
+
+        // empty nextQueue of messages
+        nextQueue.length = 0;
+    };
+
+    /**
+     * @name clear
+     * @ngdoc method
+     * @methodOf utilities.service:rxNotify
+     * @description deletes all messages in a stack
+     *
+     * @param {String} stack The name of the stack to clear
+     */
+    var clear = function (stack) {
+        if (stacks.hasOwnProperty(stack)) {
+            // @see http://davidwalsh.name/empty-array
+            stacks[stack].length = 0;
+        }
+    };
+
+    /**
+     * @name dismiss
+     * @ngdoc method
+     * @methodOf utilities.service:rxNotify
+     * @description removes a specific message from a stack
+     *
+     * @param {Object} msg Message object to remove
+     */
+    function dismiss (msg) {
+        // remove message by id
+        stacks[msg.stack] = _.reject(stacks[msg.stack], { 'id': msg.id });
+
+        if (_.isFunction(msg.ondismiss)) {
+            $interval(function () {
+                msg.ondismiss(msg);
+            }, 0, 1);
+        }
+    }//dismiss()
+
+    /**
+     * @name add
+     * @ngdoc method
+     * @methodOf utilities.service:rxNotify
+     * @description adds a message to a stack
+     *
+     * @param {String} text Message text
+     * @param {Object=} options Message options
+     * @param {String=} [options.type='info'] Message Type
+     *
+     * Values:
+     * * 'info'
+     * * 'warning'
+     * * 'error'
+     * * 'success'
+     * @param {Integer=} [options.timeout=-1]
+     * Time (in seconds) for message to appear. A value of -1 will display
+     * the message until it is dismissed or the user navigates away from the
+     * page.
+     *
+     * Values:
+     * * -1
+     * * Any positive integer
+     * @param {Boolean=} [options.repeat=true]
+     * Whether the message should be allowed to appear more than once in the stack.
+     * @param {Boolean=} [options.loading=false]
+     * Replaces type icon with spinner. Removes option for use to dismiss message.
+     *
+     * You usually want to associate this with a 'dismiss' property.
+     * @param {String|Array=} [options.show='immediate']
+     * When to have the message appear.
+     *
+     * Values:
+     * * 'immediate'
+     * * 'next'
+     * * [scope, 'property']
+     *   * Pass in a property on a scope to watch for a change.
+     *     When the property equals true, the message is shown.
+     * @param {String|Array=} [options.dismiss='next']
+     * When to have the message disappear.
+     *
+     * Values:
+     * * 'next'
+     * * [scope, 'property']
+     *     * Pass in a property on a scope to watch for a change.
+     *       When the property equals true, the message is dismissed.
+     * @param {Function=} [options.ondismiss=_.noop]
+     * Function that should be run when message is dismissed.
+     * @param {String=} [options.stack='page']
+     * Which message stack the message gets added to.
+     *
+     * Values:
+     * * 'page'
+     * * Any String *(results in a custom stack)*
+     *
+     * @returns {Object} message object
+     */
+    var add = function (text, options) {
+        var message = {
+            text: text
+        };
+
+        options = options || {};
+
+        // add unique id to message for easier identification
+        options.id = _.uniqueId();
+
+        // if stack is specified, add to different stack
+        var stack = options.stack || defaultStack;
+
+        // if new stack doesn't exist, create it
+        if (!_.isArray(stacks[stack])) {
+            stacks[stack] = [];
+        }
+
+        // add defaults to options
+        _.defaults(options, messageDefaults);
+
+        // add options to message
+        _.defaults(message, options);
+
+        // if dismiss is set to array, watch variable
+        if (_.isArray(message.dismiss)) {
+            changeOnWatch(message, 'dismiss');
+        }
+
+        // add message to stack immediately if has default show value
+        if (message.show === messageDefaults.show) {
+            addToStack(message);
+        } else if (message.show === 'next') {
+            nextQueue.push(message);
+        } else if (_.isArray(message.show)) {
+            changeOnWatch(message, 'show');
+        }
+
+        // return message object
+        return message;
+    };//add()
+
+    // add a listener to root scope which listens for the event that gets fired when the route successfully changes
+    $rootScope.$on('$routeChangeSuccess', function processRouteChange () {
+        clearAllShown();
+        addAllNext();
+    });
+
+    // expose public API
+    return {
+        add: add,
+        clear: clear,
+        dismiss: dismiss,
+        stacks: stacks
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxNestedElement
+ * @description
+ * Helper function to aid in the creation of boilerplate DDO definitions
+ * required to validate nested custom elements.
+ *
+ * @param {Object=} opts Options to merge with default DDO definitions
+ * @param {String} opts.parent Parent directive name
+ * (i.e. defined NestedElement is an immediate child of this parent element)
+ *
+ * @return {Object} Directive Definition Object for a rxNestedElement
+ *
+ * @example
+ * <pre>
+ * angular.module('myApp', [])
+ * .directive('parentElement', function (rxNestedElement) {
+ *   return rxNestedElement();
+ * })
+ * .directive('childElement', function (rxNestedElement) {
+ *   return rxNestedElement({
+ *      parent: 'parentElement'
+ *   });
+ * });
+ * </pre>
+ */
+.factory('rxNestedElement', function () {
+    return function (opts) {
+        opts = opts || {};
+
+        var defaults = {
+            restrict: 'E',
+            /*
+             * must be defined for a child element to verify
+             * correct hierarchy
+             */
+            controller: angular.noop
+        };
+
+        if (angular.isDefined(opts.parent)) {
+            opts.require = '^' + opts.parent;
+            /*
+             * bare minimum function definition needed for "require"
+             * validation logic
+             *
+             * NOTE: `angular.noop` and `_.noop` WILL NOT trigger validation
+             */
+            opts.link = function () {};
+        }
+
+        return _.defaults(opts, defaults);
+    };
+});
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxLocalStorage
+ * @description
+ * A simple wrapper for injecting the global variable `localStorage`
+ * for storing values in the browser's local storage object. This service is similar to Angular's
+ * `$window` and `$document` services.  The API works the same as the W3C's
+ * specification provided at: https://html.spec.whatwg.org/multipage/webstorage.html.
+ * This service also includes helper functions for getting and setting objects.
+ *
+ * @example
+ * <pre>
+ * rxLocalStorage.setItem('Batman', 'Robin'); // no return value
+ * rxLocalStorage.key(0); // returns 'Batman'
+ * rxLocalStorage.getItem('Batman'); // returns 'Robin'
+ * rxLocalStorage.removeItem('Batman'); // no return value
+ * rxLocalStorage.setObject('hero', {name:'Batman'}); // no return value
+ * rxLocalStorage.getObject('hero'); // returns { name: 'Batman'}
+ * rxLocalStorage.clear(); // no return value
+ * </pre>
+ */
+.service('rxLocalStorage', ["$window", function ($window) {
+    var localStorage = $window.localStorage;
+    if ($window.self !== $window.top) {
+        try {
+            localStorage = $window.top.localStorage;
+        } catch (e) {
+            localStorage = $window.localStorage;
+        }
+    }
+
+    this.setItem = function (key, value) {
+        localStorage.setItem(key, value);
+    };
+
+    this.getItem = function (key) {
+        return localStorage.getItem(key);
+    };
+
+    this.key = function (key) {
+        return localStorage.key(key);
+    };
+
+    this.removeItem = function (key) {
+        localStorage.removeItem(key);
+    };
+
+    this.clear = function () {
+        localStorage.clear();
+    };
+
+    this.__defineGetter__('length', function () {
+        return localStorage.length;
+    });
+
+    this.setObject = function (key, val) {
+        var value = _.isObject(val) || _.isArray(val) ? JSON.stringify(val) : val;
+        this.setItem(key, value);
+    };
+
+    this.getObject = function (key) {
+        var item = localStorage.getItem(key);
+        try {
+            item = JSON.parse(item);
+        } catch (error) {
+            return item;
+        }
+
+        return item;
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc service
+ * @name utilities.service:rxDOMHelper
+ * @description
+ * A small set of functions to provide some functionality
+ * that isn't present in [Angular's jQuery-lite](https://docs.angularjs.org/api/ng/function/angular.element),
+ * and other DOM-related functions that are useful.
+ *
+ * **NOTE:** All methods take jQuery-lite wrapped elements as arguments.
+ */
+.factory('rxDOMHelper', ["$document", "$window", function ($document, $window) {
+    var scrollTop = function () {
+        // Safari and Chrome both use body.scrollTop, but Firefox needs
+        // documentElement.scrollTop
+        var doc = $document[0];
+        var scrolltop = $window.pageYOffset || doc.body.scrollTop || doc.documentElement.scrollTop || 0;
+        return scrolltop;
+    };
+
+    var offset = function (elm) {
+        //http://cvmlrobotics.blogspot.co.at/2013/03/angularjs-get-element-offset-position.html
+        var rawDom = elm[0];
+        var _x = 0;
+        var _y = 0;
+        var doc = $document[0];
+        var body = doc.documentElement || doc.body;
+        var scrollX = $window.pageXOffset || body.scrollLeft;
+        var scrollY = scrollTop();
+        var rect = rawDom.getBoundingClientRect();
+        _x = rect.left + scrollX;
+        _y = rect.top + scrollY;
+        return { left: _x, top: _y };
+    };
+
+    var style = function (elem) {
+        if (elem instanceof angular.element) {
+            elem = elem[0];
+        }
+        return $window.getComputedStyle(elem);
+    };
+
+    var width = function (elem) {
+        return style(elem).width;
+    };
+
+    var height = function (elem) {
+        return style(elem).height;
+    };
+
+    var shouldFloat = function (elem, maxHeight) {
+        var elemOffset = offset(elem),
+            scrolltop = scrollTop();
+
+        return ((scrolltop > elemOffset.top) && (scrolltop < elemOffset.top + maxHeight));
+    };
+
+    // An implementation of wrapAll, based on
+    // http://stackoverflow.com/a/13169465
+    // Takes a raw DOM `newParent`, and moves all of `elms` (either
+    // a single element or an array of elements) into it. It then places
+    // `newParent` in the location that elms[0] was originally in
+    var wrapAll = function (newParent, elms) {
+        // Figure out if it's one element or an array
+        var isGroupParent = ['SELECT', 'FORM'].indexOf(elms.tagName) !== -1;
+        var el = (elms.length && !isGroupParent) ? elms[0] : elms;
+
+        // cache the current parent node and sibling
+        // of the first element
+        var parentNode = el.parentNode;
+        var sibling = el.nextSibling;
+
+        // wrap the first element. This automatically
+        // removes it from its parent
+        newParent.appendChild(el);
+
+        // If there are other elements, wrap them. Each time
+        // it will remove the element from its current parent,
+        // and also from the `elms` array
+        if (!isGroupParent) {
+            while (elms.length) {
+                newParent.appendChild(elms[0]);
+            }
+        }
+
+        // If there was a sibling to the first element,
+        // insert newParent right before it. Otherwise
+        // just add it to parentNode
+        if (sibling) {
+            parentNode.insertBefore(newParent, sibling);
+        } else {
+            parentNode.appendChild(newParent);
+        }
+    };
+
+    // bind `f` to the scroll event
+    var onscroll = function (f) {
+        angular.element($window).bind('scroll', f);
+    };
+
+    var find = function (elem, selector) {
+        return angular.element(elem[0].querySelector(selector));
+    };
+
+    return {
+        offset: offset,
+        scrollTop: scrollTop,
+        width: width,
+        height: height,
+        shouldFloat: shouldFloat,
+        onscroll: onscroll,
+        find: find,
+        wrapAll: wrapAll
+    };
+}]);
+
+angular.module('encore.ui.utilities')
+/**
+ * @ngdoc filter
+ * @name utilities.filter:rxAge
+ * @description
+ * Several filters are available to parse dates.
+ *
+ * ## Two Digit Display
+ * 1. You can just have it use the default abbreviated method and it truncates it
+ *  to the two largest units.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageHours}} &rarr; {{ageHours | rxAge}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Tue Sep 22 2015 00:44:00 GMT-0500 (CDT) → 10h 30m`
+ *
+ * ## Full Word Representation
+ * 2. You can also pass in a second value of `true` and have it expand the units
+ *  from the first letter to their full word representation.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageHours}} &rarr; {{ageHours | rxAge:true}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Tue Sep 22 2015 00:35:30 GMT-0500 (CDT) → 10 hours, 33 minutes`
+ *
+ * ## Mulitple Digits
+ * 3. Or you can pass in a number from `1` to `3` as the second value to allow for
+ *  different amounts of units.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageYears}} &rarr; {{ageYears | rxAge:3}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Sun Sep 07 2014 08:46:05 GMT-0500 (CDT) → 380d 2h 27m`
+ *
+ * ## Multiple Argument Usage
+ * 4. **OR** you can pass in a number as the second argument and `true` as the
+ *    third argument to combine these two effects.
+ *
+ *  <pre>
+ *    <div ng-controller="rxAgeCtrl">
+ *      <ul>
+ *        <li>{{ageMonths}} &rarr; {{ageMonths | rxAge:3:true}}</li>
+ *      </ul>
+ *    </div>
+ *  </pre>
+ *  `Thu Aug 13 2015 06:22:05 GMT-0500 (CDT) → 40 days, 4 hours, 49 minutes`
+ *
+ *
+ * **NOTE:** This component requires [moment.js](http://momentjs.com/) to parse, manipulate, and
+ * display dates which is provided by Encore Framework.
+ */
+.filter('rxAge', function () {
+    return function (dateString, maxUnits, verbose) {
+        if (!dateString) {
+            return 'Unavailable';
+        } else if (dateString === 'z') {
+            return '--';
+        }
+
+        var now = moment();
+        var date = moment(new Date(dateString));
+        var diff = now.diff(date);
+        var duration = moment.duration(diff);
+        var days = Math.floor(duration.asDays());
+        var hours = Math.floor(duration.asHours());
+        var mins = Math.floor(duration.asMinutes());
+        var age = [];
+
+        if (_.isBoolean(maxUnits)) {
+            // if maxUnits is a boolean, then we assume it's meant to be the verbose setting
+            verbose = maxUnits;
+        } else if (!_.isBoolean(verbose)) {
+            // otherwise, if verbose isn't set, default to false
+            verbose =  false;
+        }
+
+        // This initialization has to happen AFTER verbose init so that we can
+        // use the original passed in value.
+        maxUnits = (_.isNumber(maxUnits)) ? maxUnits : 2;
+
+        var dateUnits = [days, hours - (24 * days), mins - (60 * hours)];
+        var suffixes = ['d', 'h', 'm'];
+
+        if (verbose) {
+            suffixes = [' day', ' hour', ' minute'];
+
+            _.forEach(suffixes, function (suffix, index) {
+                suffixes[index] += ((dateUnits[index] !== 1) ? 's' : '');
+            });
+        }
+
+        if (days > 0) {
+            age.push({ value: days, suffix: suffixes[0] });
+        }
+
+        if (hours > 0) {
+            age.push({ value: hours - (24 * days), suffix: suffixes[1] });
+        }
+
+        age.push({ value: mins - (60 * hours), suffix: suffixes[2] });
+
+        return _.map(age.slice(0, maxUnits), function (dateUnit, index, listOfAges) {
+            if (index === listOfAges.length - 1) {
+                return Math.round(dateUnit.value) + dateUnit.suffix;
+            } else {
+                return Math.floor(dateUnit.value) + dateUnit.suffix;
+            }
+        }).join((verbose) ? ', ' : ' ');
+    };
+});
+
 /**
  * @ngdoc overview
  * @name elements
@@ -2454,24 +5153,6 @@ angular.module('encore.ui.elements')
 });
 
 angular.module('encore.ui.elements')
-.config(["$provide", function ($provide) {
-  $provide.decorator('rxActionMenuDirective', ["$delegate", function ($delegate) {
-    // https://github.com/angular/angular.js/issues/10149
-    // TODO: figure out why isolateBindings are undefined and remove setTimeout
-    setTimeout(function () {
-      _.each(['type', 'text'], function (key) {
-        $delegate[0].$$isolateBindings[key] = {
-          attrName: key,
-          mode: '@',
-          optional: true
-        };
-      });
-    }, 2000);
-    return $delegate;
-  }]);
-}]);
-
-angular.module('encore.ui.elements')
 /**
  * @ngdoc directive
  * @name elements.directive:rxActionMenu
@@ -2536,6 +5217,24 @@ angular.module('encore.ui.elements')
             // https://github.com/angular-ui/bootstrap/blob/master/src/tooltip/tooltip.js
         }
     };
+}]);
+
+angular.module('encore.ui.elements')
+.config(["$provide", function ($provide) {
+  $provide.decorator('rxActionMenuDirective', ["$delegate", function ($delegate) {
+    // https://github.com/angular/angular.js/issues/10149
+    // TODO: figure out why isolateBindings are undefined and remove setTimeout
+    setTimeout(function () {
+      _.each(['type', 'text'], function (key) {
+        $delegate[0].$$isolateBindings[key] = {
+          attrName: key,
+          mode: '@',
+          optional: true
+        };
+      });
+    }, 2000);
+    return $delegate;
+  }]);
 }]);
 
 angular.module('encore.ui.rxApp', ['ngRoute']);
