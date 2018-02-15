@@ -28,11 +28,11 @@ const files = () => merge.apply(null,
   .concat(vinylFs.src(`${config.submodule}/elements/elements.module.js`, {
     base: `${config.submodule}/elements`
   }))
-  //.concat(_.map(config.modules.utilities, (u) => fsLayer.read(`${config.submodule}/utilities/${u}`)))
+  .concat(_.map(config.modules.utilities, (u) => fsLayer.read(`${config.submodule}/utilities/${u}`)))
   // gulp 3 uses vinyl 0.3, which doesn't support the base option, which is needed for the stem
-  //.concat(vinylFs.src('src/utilities/utilities.module.js', {
-  //  base: `${config.submodule}/utilities`
-  //}))
+  .concat(vinylFs.src('src/utilities/utilities.module.js', {
+    base: `${config.submodule}/utilities`
+  }))
 );
 
 function buildScripts () {
