@@ -11,12 +11,10 @@
       "FlexboxGrid",
       "Forms",
       "Metadata",
+      "Tables",
       "Tags",
       "Tooltips",
-      "rxPopover",
-      "rxRadio",
-      "rxSortableColumn",
-      "rxStatusColumn"
+      "rxPopover"
     ],
     "utilities": [
       "PaginatedItemsSummary",
