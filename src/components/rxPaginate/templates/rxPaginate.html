@@ -1,10 +1,10 @@
 <div class="rx-paginate">
   <div class="pagination" layout="row" layout-wrap layout-align="justify top">
-    <div flex="50" flex-order="2" flex-gt-md="20" flex-order-gt-md="1" flex-gt-lg="35" layout="row">
+    <div flex="35" flex-order="2" flex-gt-md="20" flex-order-gt-md="1" flex-gt-lg="35" layout="row">
       <a class="back-to-top" tabindex="0" ng-click="scrollToTop()">Back to top</a>
       <div hide show-gt-lg>Showing {{ pageTracking | PaginatedItemsSummary}} items</div>
     </div>
-    <div flex="100" flex-order="1" flex-gt-md="40" flex-order-gt-md="2" flex-gt-lg="35">
+    <div flex="45" flex-order="1" flex-gt-md="40" flex-order-gt-md="2" flex-gt-lg="35">
       <div class="page-links" layout="row" layout-align="center">
         <div ng-class="{disabled: pageTracking.isFirstPage()}" class="pagination-first">
           <a hide show-gt-lg ng-click="pageTracking.goToFirstPage()" ng-hide="pageTracking.isFirstPage()">First</a>
@@ -25,7 +25,7 @@
         </div>
       </div>
     </div>
-    <div flex="25" flex-order="3" flex-gt-md="40" flex-order-gt-md="3" flex-gt-lg="30">
+    <div flex="20" flex-order="3" flex-gt-md="40" flex-order-gt-md="3" flex-gt-lg="30">
       <div class="pagination-per-page" layout="row" layout-align="right">
         <div>
           Show
