@@ -3177,6 +3177,35 @@ rx-tags[disabled] .rx-tags:hover {
 .rx-tags .tag:focus .fa-times:hover {
   color: #ffffff;
 }
+rx-tooltip i {
+  color: #0E94A6;
+}
+rx-tooltip .tooltip {
+  left: -10px;
+}
+[rx-tooltip-anchor] {
+  display: inline-block;
+  position: relative;
+}
+rx-tooltip-content .tooltip.bottom {
+  display: none;
+}
+rx-tooltip-content .tooltip.bottom.in {
+  display: block;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-arrow {
+  left: 18px;
+  border-bottom-color: #d8d8d8;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-arrow:before {
+  border-bottom-color: #eeeeee;
+}
+rx-tooltip-content .tooltip.bottom .tooltip-inner {
+  background: #eeeeee;
+  color: #424242;
+  border: 1px solid #d8d8d8;
+  padding: 10px;
+}
 .tooltip {
   position: absolute;
   z-index: 1070;
@@ -3288,35 +3317,6 @@ rx-tags[disabled] .rx-tags:hover {
 .tooltip.left .tooltip-arrow:before {
   left: -10px;
   border-left-color: #757575;
-}
-rx-tooltip i {
-  color: #0E94A6;
-}
-rx-tooltip .tooltip {
-  left: -10px;
-}
-[rx-tooltip-anchor] {
-  display: inline-block;
-  position: relative;
-}
-rx-tooltip-content .tooltip.bottom {
-  display: none;
-}
-rx-tooltip-content .tooltip.bottom.in {
-  display: block;
-}
-rx-tooltip-content .tooltip.bottom .tooltip-arrow {
-  left: 18px;
-  border-bottom-color: #d8d8d8;
-}
-rx-tooltip-content .tooltip.bottom .tooltip-arrow:before {
-  border-bottom-color: #eeeeee;
-}
-rx-tooltip-content .tooltip.bottom .tooltip-inner {
-  background: #eeeeee;
-  color: #424242;
-  border: 1px solid #d8d8d8;
-  padding: 10px;
 }
 .rxStatusMappings-demo .demo-status-column-table {
   max-width: 500px;
