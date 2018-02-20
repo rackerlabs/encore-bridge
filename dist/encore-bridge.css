@@ -2179,7 +2179,7 @@ div.pagination-last a {
     padding-top: 0;
   }
   .back-to-top {
-    padding: 0 20px;
+    padding: 0 12px 0 16px;
     cursor: pointer;
   }
 }
